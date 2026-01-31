@@ -1,126 +1,169 @@
-// https://tornado.cash
-/*
- * d888888P                                           dP              a88888b.                   dP
- *    88                                              88             d8'   `88                   88
- *    88    .d8888b. 88d888b. 88d888b. .d8888b. .d888b88 .d8888b.    88        .d8888b. .d8888b. 88d888b.
- *    88    88'  `88 88'  `88 88'  `88 88'  `88 88'  `88 88'  `88    88        88'  `88 Y8ooooo. 88'  `88
- *    88    88.  .88 88       88    88 88.  .88 88.  .88 88.  .88 dP Y8.   .88 88.  .88       88 88    88
- *    dP    `88888P' dP       dP    dP `88888P8 `88888P8 `88888P' 88  Y88888P' `88888P8 `88888P' dP    dP
- * ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
- */
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 interface IHasher {
-  function MiMCSponge(uint256 in_xL, uint256 in_xR) external pure returns (uint256 xL, uint256 xR);
+    function MiMCSponge(uint256 in_xL, uint256 in_xR) external pure returns (uint256 xL, uint256 xR);
 }
 
 contract MerkleTreeWithHistory {
-  uint256 public constant FIELD_SIZE = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
-  uint256 public constant ZERO_VALUE = 21663839004416932945382355908790599225266501822907911457504978515578255421292; // = keccak256("tornado") % FIELD_SIZE
-  IHasher public immutable hasher;
 
-  uint32 public levels;
+    error InvalidLevels(uint32 provided);
+    error MerkleTreeFull(uint32 currentIndex, uint256 maxCapacity);
+    error LeafTooLarge(uint256 leaf, uint256 fieldSize);
+    error InvalidHasher();
+    error IndexOutOfBounds(uint256 index);
 
-  // the following variables are made public for easier testing and debugging and
-  // are not supposed to be accessed in regular code
+    event LeafInserted(uint32 indexed index, bytes32 indexed leaf, bytes32 newRoot);
 
-  // filledSubtrees and roots could be bytes32[size], but using mappings makes it cheaper because
-  // it removes index range check on every interaction
-  mapping(uint256 => bytes32) public filledSubtrees;
-  mapping(uint256 => bytes32) public roots;
-  uint32 public constant ROOT_HISTORY_SIZE = 30;
-  uint32 public currentRootIndex = 0;
-  uint32 public nextIndex = 0;
+    uint256 public constant FIELD_SIZE = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
+    uint256 public constant ZERO_VALUE = 21663839004416932945382355908790599225266501822907911457504978515578255421292;
 
-  constructor(uint32 _levels, IHasher _hasher) {
-    require(_levels > 0 && _levels < 32, "Levels should be between 1 and 32");
-    levels = _levels;
-    hasher = _hasher;
+    /// @notice Maximum number of roots stored in history
+    uint32 public constant ROOT_HISTORY_SIZE = 30;
 
-    for (uint32 i = 0; i < _levels; i++) {
-      filledSubtrees[i] = zeros(i);
+    /// @notice The MiMC hasher contract
+    IHasher public immutable hasher;
+
+    /// @notice The number of levels in the Merkle tree
+    uint32 public immutable levels;
+
+
+    /// @notice Stores the last inserted node at each level (used for completing pairs)
+    mapping(uint256 => bytes32) public filledSubtrees;
+
+    /// @notice Circular buffer storing the last ROOT_HISTORY_SIZE roots
+    mapping(uint256 => bytes32) public roots;
+
+    uint32 public currentRootIndex;
+
+    uint32 public nextIndex;
+
+    /// @notice Creates a new Merkle tree with specified depth and hasher
+    /// @param _levels The depth of the tree (must be between 1 and 31)
+    /// @param _hasher The MiMC hasher contract address
+    /// @dev Initializes filledSubtrees with empty hashes and sets initial root
+    constructor(uint32 _levels, IHasher _hasher) {
+        if (address(_hasher) == address(0)) revert InvalidHasher();
+        if (_levels == 0 || _levels >= 32) revert InvalidLevels(_levels);
+
+        levels = _levels;
+        hasher = _hasher;
+
+        for (uint32 i = 0; i < _levels;) {
+            filledSubtrees[i] = zeros(i);
+            unchecked {
+                ++i;
+            }
+        }
+
+        roots[0] = zeros(_levels - 1);
     }
 
-    roots[0] = zeros(_levels - 1);
-  }
 
-  /**
-    @dev Hash 2 tree leaves, returns MiMC(_left, _right)
-  */
-  function hashLeftRight(
-    IHasher _hasher,
-    bytes32 _left,
-    bytes32 _right
-  ) public pure returns (bytes32) {
-    require(uint256(_left) < FIELD_SIZE && uint256(_right) < FIELD_SIZE, "Leaves must be < FIELD_SIZE");
-    uint256 R = uint256(_left);
-    uint256 C = 0;
-    (R, C) = _hasher.MiMCSponge(R, C);
-    R = addmod(R, uint256(_right), FIELD_SIZE);
-    (R, C) = _hasher.MiMCSponge(R, C);
-    return bytes32(R);
-  }
+    /// @notice Hashes two tree nodes using MiMC Sponge construction
+    /// @param _hasher The MiMC hasher to use
+    /// @param _left The left node value
+    /// @param _right The right node value
+    /// @return The hash of the two nodes as bytes32
+    /// @dev Both inputs must be less than FIELD_SIZE for ZK-proof compatibility
+    function hashLeftRight(IHasher _hasher, bytes32 _left, bytes32 _right) public pure returns (bytes32) {
+        uint256 leftValue = uint256(_left);
+        uint256 rightValue = uint256(_right);
 
-  function _insert(bytes32 _leaf) internal returns (uint32 index) {
-    uint32 _nextIndex = nextIndex;
-    require(_nextIndex != uint32(2)**levels, "Merkle tree is full. No more leaves can be added");
-    uint32 currentIndex = _nextIndex;
-    bytes32 currentLevelHash = _leaf;
-    bytes32 left;
-    bytes32 right;
+        if (leftValue >= FIELD_SIZE) revert LeafTooLarge(leftValue, FIELD_SIZE);
+        if (rightValue >= FIELD_SIZE) revert LeafTooLarge(rightValue, FIELD_SIZE);
 
-    for (uint32 i = 0; i < levels; i++) {
-      if (currentIndex % 2 == 0) {
-        left = currentLevelHash;
-        right = zeros(i);
-        filledSubtrees[i] = currentLevelHash;
-      } else {
-        left = filledSubtrees[i];
-        right = currentLevelHash;
-      }
-      currentLevelHash = hashLeftRight(hasher, left, right);
-      currentIndex /= 2;
+        uint256 R = leftValue;
+        uint256 C = 0;
+        (R, C) = _hasher.MiMCSponge(R, C);
+        R = addmod(R, rightValue, FIELD_SIZE);
+        (R, C) = _hasher.MiMCSponge(R, C);
+        return bytes32(R);
     }
 
-    uint32 newRootIndex = (currentRootIndex + 1) % ROOT_HISTORY_SIZE;
-    currentRootIndex = newRootIndex;
-    roots[newRootIndex] = currentLevelHash;
-    nextIndex = _nextIndex + 1;
-    return _nextIndex;
-  }
+   
+    /// @notice Inserts a new leaf into the Merkle tree
+    /// @param _leaf The leaf value to insert
+    /// @return index The position where the leaf was inserted
+    /// @dev Updates the tree by recalculating hashes from leaf to root
+    function _insert(bytes32 _leaf) internal returns (uint32 index) {
+        uint32 _nextIndex = nextIndex;
+        uint32 _levels = levels;
+        IHasher _hasher = hasher;
 
-  /**
-    @dev Whether the root is present in the root history
-  */
-  function isKnownRoot(bytes32 _root) public view returns (bool) {
-    if (_root == 0) {
-      return false;
+        // Check if tree is full
+        uint256 maxCapacity = uint256(2) ** _levels;
+        if (_nextIndex >= maxCapacity) {
+            revert MerkleTreeFull(_nextIndex, maxCapacity);
+        }
+
+        uint32 currentIndex = _nextIndex;
+        bytes32 currentLevelHash = _leaf;
+        bytes32 left;
+        bytes32 right;
+
+        for (uint32 i = 0; i < _levels;) {
+            if (currentIndex % 2 == 0) {
+                left = currentLevelHash;
+                right = zeros(i);
+                filledSubtrees[i] = currentLevelHash;
+            } else {
+                left = filledSubtrees[i];
+                right = currentLevelHash;
+            }
+            currentLevelHash = hashLeftRight(_hasher, left, right);
+
+            unchecked {
+                currentIndex /= 2;
+                ++i;
+            }
+        }
+
+        uint32 newRootIndex;
+        unchecked {
+            newRootIndex = (currentRootIndex + 1) % ROOT_HISTORY_SIZE;
+        }
+        currentRootIndex = newRootIndex;
+        roots[newRootIndex] = currentLevelHash;
+
+        unchecked {
+            nextIndex = _nextIndex + 1;
+        }
+
+        emit LeafInserted(_nextIndex, _leaf, currentLevelHash);
+
+        return _nextIndex;
     }
-    uint32 _currentRootIndex = currentRootIndex;
-    uint32 i = _currentRootIndex;
-    do {
-      if (_root == roots[i]) {
-        return true;
-      }
-      if (i == 0) {
-        i = ROOT_HISTORY_SIZE;
-      }
-      i--;
-    } while (i != _currentRootIndex);
-    return false;
-  }
 
-  /**
-    @dev Returns the last root
-  */
-  function getLastRoot() public view returns (bytes32) {
-    return roots[currentRootIndex];
-  }
+    /// @notice Checks if a root exists in the root history
+    /// @param _root The root to check
+    /// @return True if the root is in the history, false otherwise
+    /// @dev Used to verify if a proof corresponds to a valid historical tree state
+    function isKnownRoot(bytes32 _root) public view returns (bool) {
+        if (_root == 0) {
+            return false;
+        }
 
-  /// @dev provides Zero (Empty) elements for a MiMC MerkleTree. Up to 32 levels
-  function zeros(uint256 i) public pure returns (bytes32) {
+        uint32 _currentRootIndex = currentRootIndex;
+
+        unchecked {
+            for (uint32 i = 0; i < ROOT_HISTORY_SIZE; ++i) {
+                uint32 index = (_currentRootIndex + ROOT_HISTORY_SIZE - i) % ROOT_HISTORY_SIZE;
+                if (_root == roots[index]) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    function getLastRoot() public view returns (bytes32) {
+        return roots[currentRootIndex];
+    }
+
+    /// @dev provides Zero (Empty) elements for a MiMC MerkleTree. Up to 32 levels
+    function zeros(uint256 i) public pure returns (bytes32) {
     if (i == 0) return bytes32(0x2fe54c60d3acabf3343a35b6eba15db4821b340f76e741e2249685ed4899af6c);
     else if (i == 1) return bytes32(0x256a6135777eee2fd26f54b8b7037a25439d5235caee224154186d2b8a52e31d);
     else if (i == 2) return bytes32(0x1151949895e82ab19924de92c40a3d6f7bcb60d92b00504b8199613683f0c200);
