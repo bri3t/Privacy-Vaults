@@ -273,11 +273,13 @@ function WithdrawTab({
   address,
   publicClient,
   vaultAddress,
+  deployBlock,
 }: {
   isAuthenticated: boolean
   address: string | undefined
   publicClient: PublicClient
   vaultAddress: `0x${string}`
+  deployBlock: bigint
 }) {
   const [note, setNote] = useState('')
   const [recipient, setRecipient] = useState('')
@@ -300,6 +302,7 @@ function WithdrawTab({
         publicClient,
         vaultAddress,
         VAULT_WITHDRAW_ENDPOINT,
+        deployBlock,
         setWithdrawStep,
       )
 
@@ -313,7 +316,7 @@ function WithdrawTab({
       setIsWithdrawing(false)
       setWithdrawStep(null)
     }
-  }, [note, recipient, publicClient, vaultAddress])
+  }, [note, recipient, publicClient, vaultAddress, deployBlock])
 
   return (
     <div className="space-y-6">
@@ -698,6 +701,7 @@ export function AppPage() {
                 address={address}
                 publicClient={publicClient as PublicClient}
                 vaultAddress={getVaultConfig(paymentChain.id).vaultAddress}
+                deployBlock={getVaultConfig(paymentChain.id).deployBlock}
               />
             )}
           </div>

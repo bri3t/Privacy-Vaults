@@ -52,6 +52,7 @@ export async function withdraw(
   publicClient: PublicClient,
   vaultAddress: Address,
   relayerEndpoint: string,
+  deployBlock: bigint,
   onStep?: (step: WithdrawStep) => void,
 ): Promise<WithdrawResult> {
   // 1. Parse the note
@@ -74,8 +75,9 @@ export async function withdraw(
     publicClient,
     vaultAddress,
     computedCommitment,
+    deployBlock,
   )
-  const merkleProof = await getMerkleProof(publicClient, vaultAddress, leafIndex)
+  const merkleProof = await getMerkleProof(publicClient, vaultAddress, leafIndex, deployBlock)
 
   // 3. Compute nullifier hash
   const nullifierHash = await createNullifierHash(nullifier)

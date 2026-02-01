@@ -1,11 +1,6 @@
 // @ts-expect-error -- circomlibjs has no type declarations
 import { buildPedersenHash, buildBabyjub } from 'circomlibjs'
 
-// BN254 scalar field prime - commitments must be less than this value
-const FIELD_SIZE = BigInt(
-  '21888242871839275222246405745257275088548364400416034343698204186575808495617',
-)
-
 // Lazy-loaded circomlibjs instances (they boot a WASM module)
 let pedersenHash: Awaited<ReturnType<typeof buildPedersenHash>> | null = null
 let babyJub: Awaited<ReturnType<typeof buildBabyjub>> | null = null
