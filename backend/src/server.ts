@@ -2,7 +2,7 @@ import express from "express";
 import { config } from "dotenv";
 import { loadConfig } from "./config.js";
 import { createOpenfortClient } from "./openfort.js";
-import { handleHealth, handleShieldSession, handleProtectedContent, handleVaultDeposit } from "./routes.js";
+import { handleHealth, handleShieldSession, handleProtectedContent, handleVaultDeposit, handleVaultWithdraw } from "./routes.js";
 
 // Load .env.local
 config({ path: ".env.local" });
@@ -35,6 +35,7 @@ app.get("/api/health", handleHealth);
 app.post("/api/protected-create-encryption-session", (req, res) => handleShieldSession(req, res, openfortClient, env.openfort.shield));
 app.all("/api/protected-content", (req, res) => handleProtectedContent(req, res, env.paywall));
 app.post("/api/vault/deposit", (req, res) => handleVaultDeposit(req, res, env.vault));
+app.post("/api/vault/withdraw", (req, res) => handleVaultWithdraw(req, res, env.vault));
 
 // 404 handler
 app.use((_req, res) => {

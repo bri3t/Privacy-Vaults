@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import type { Openfort } from "@openfort/openfort-node";
 import type { Config } from "./config.js";
 import { decodePaymentHeader, createPaymentRequiredResponse } from "./payment.js";
-import { relayVaultDeposit, type VaultDepositRequest } from "./vault.js";
+import { relayVaultDeposit, relayVaultWithdraw, type VaultDepositRequest, type VaultWithdrawRequest } from "./vault.js";
 
 export async function handleHealth(_req: Request, res: Response): Promise<void> {
   res.status(200).json({
@@ -164,6 +164,58 @@ export async function handleVaultDeposit(
     });
   } catch (error) {
     console.error("Vault deposit error:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      details: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+}
+
+/**
+ * Relays a vault withdrawal with ZK proof
+ */
+export async function handleVaultWithdraw(
+  req: Request,
+  res: Response,
+  vaultConfig: Config["vault"]
+): Promise<void> {
+  try {
+    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+
+    if (!body.pA || !body.pB || !body.pC || !body.root || !body.nullifierHash || !body.recipient) {
+      res.status(400).json({
+        error: "Missing required fields: pA, pB, pC, root, nullifierHash, recipient",
+      });
+      return;
+    }
+
+    const request: VaultWithdrawRequest = {
+      pA: body.pA,
+      pB: body.pB,
+      pC: body.pC,
+      root: body.root,
+      nullifierHash: body.nullifierHash,
+      recipient: body.recipient,
+    };
+
+    const result = await relayVaultWithdraw(request, vaultConfig);
+
+    if (!result.success) {
+      res.status(500).json({
+        error: "Failed to relay vault withdrawal",
+        details: result.error,
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Vault withdrawal relayed successfully",
+      transactionHash: result.transactionHash,
+      blockNumber: result.blockNumber,
+    });
+  } catch (error) {
+    console.error("Vault withdrawal error:", error);
     res.status(500).json({
       error: "Internal server error",
       details: error instanceof Error ? error.message : "Unknown error",

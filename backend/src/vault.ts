@@ -55,6 +55,20 @@ const PRIVACY_VAULT_ABI = [
         stateMutability: "nonpayable",
         type: "function",
     },
+    {
+        inputs: [
+            { internalType: "uint256[2]", name: "_pA", type: "uint256[2]" },
+            { internalType: "uint256[2][2]", name: "_pB", type: "uint256[2][2]" },
+            { internalType: "uint256[2]", name: "_pC", type: "uint256[2]" },
+            { internalType: "bytes32", name: "_root", type: "bytes32" },
+            { internalType: "bytes32", name: "_nullifierHash", type: "bytes32" },
+            { internalType: "address", name: "_recipient", type: "address" },
+        ],
+        name: "withdraw",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function",
+    },
 ] as const;
 
 /**
@@ -77,6 +91,28 @@ export interface VaultDepositRequest {
  * Response from vault deposit
  */
 export interface VaultDepositResponse {
+    success: boolean;
+    transactionHash: string;
+    blockNumber?: number;
+    error?: string;
+}
+
+/**
+ * Request body for vault withdrawal
+ */
+export interface VaultWithdrawRequest {
+    pA: [string, string];
+    pB: [[string, string], [string, string]];
+    pC: [string, string];
+    root: string; // bytes32 hex string
+    nullifierHash: string; // bytes32 hex string
+    recipient: string; // address
+}
+
+/**
+ * Response from vault withdrawal
+ */
+export interface VaultWithdrawResponse {
     success: boolean;
     transactionHash: string;
     blockNumber?: number;
@@ -166,6 +202,77 @@ export async function relayVaultDeposit(
         };
     } catch (error) {
         console.error("Error relaying vault deposit:", error);
+        return {
+            success: false,
+            transactionHash: "",
+            error: error instanceof Error ? error.message : "Unknown error",
+        };
+    }
+}
+
+/**
+ * Executes a vault withdrawal via relayer
+ * @param request Withdrawal request with ZK proof
+ * @param vaultConfig Vault configuration with addresses and private key
+ * @returns Transaction hash and receipt
+ */
+export async function relayVaultWithdraw(
+    request: VaultWithdrawRequest,
+    vaultConfig: Config["vault"],
+): Promise<VaultWithdrawResponse> {
+    try {
+        if (!vaultConfig.relayerPrivateKey) {
+            throw new Error("Relayer private key not configured");
+        }
+
+        const chain = vaultConfig.chainId === 8453 ? base : baseSepolia;
+        const rpcUrl = getRpcUrl(vaultConfig.chainId);
+
+        const rawKey = vaultConfig.relayerPrivateKey.startsWith("0x")
+            ? vaultConfig.relayerPrivateKey
+            : `0x${vaultConfig.relayerPrivateKey}`;
+        const account = privateKeyToAccount(rawKey as `0x${string}`);
+        const walletClient = createWalletClient({
+            account,
+            chain,
+            transport: http(rpcUrl),
+        });
+
+        const vaultContract = getContract({
+            address: vaultConfig.vaultAddress as Address,
+            abi: PRIVACY_VAULT_ABI,
+            client: walletClient,
+        });
+
+        const pA = request.pA.map(BigInt) as [bigint, bigint];
+        const pB = request.pB.map((pair) => pair.map(BigInt) as [bigint, bigint]) as [[bigint, bigint], [bigint, bigint]];
+        const pC = request.pC.map(BigInt) as [bigint, bigint];
+
+        const transactionHash = await vaultContract.write.withdraw([
+            pA,
+            pB,
+            pC,
+            request.root as `0x${string}`,
+            request.nullifierHash as `0x${string}`,
+            request.recipient as Address,
+        ]);
+
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(rpcUrl),
+        });
+
+        const receipt = await publicClient.waitForTransactionReceipt({
+            hash: transactionHash,
+        });
+
+        return {
+            success: receipt.status === "success",
+            transactionHash,
+            blockNumber: Number(receipt.blockNumber),
+        };
+    } catch (error) {
+        console.error("Error relaying vault withdrawal:", error);
         return {
             success: false,
             transactionHash: "",

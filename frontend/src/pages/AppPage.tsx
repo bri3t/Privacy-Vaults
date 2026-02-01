@@ -3,7 +3,7 @@ import { OpenfortButton, useUser } from '@openfort/react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { createPublicClient, http } from 'viem'
+import { type PublicClient, createPublicClient, http } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
 import { useAccount, useSwitchChain, useWalletClient } from 'wagmi'
 import { AnimatedBackground } from '../components/AnimatedBackground'
@@ -23,6 +23,7 @@ import { getUSDCBalance, type SupportedNetwork } from '../integrations/x402'
 import { createVaultAuthorization } from '../integrations/x402/payments'
 import { getVaultConfig } from '../integrations/vault/config'
 import { generateVaultNote, type VaultNote } from '../integrations/zk/notes'
+import { withdraw as executeWithdraw, type WithdrawStep } from '../integrations/zk/withdraw'
 
 type Tab = 'deposit' | 'withdraw'
 
@@ -52,6 +53,10 @@ const BALANCE_REFRESH_INTERVAL_MS = 3000
 const VAULT_DEPOSIT_ENDPOINT =
   import.meta.env.VITE_VAULT_DEPOSIT_ENDPOINT ??
   'http://localhost:3007/api/vault/deposit'
+
+const VAULT_WITHDRAW_ENDPOINT =
+  import.meta.env.VITE_VAULT_WITHDRAW_ENDPOINT ??
+  'http://localhost:3007/api/vault/withdraw'
 
 // const depositButtonTheme = {
 //   '--ck-connectbutton-width': '100%',
@@ -255,15 +260,60 @@ function DepositTab({
   )
 }
 
+const STEP_LABELS: Record<WithdrawStep, string> = {
+  parsing: 'Parsing note...',
+  'building-tree': 'Building Merkle tree...',
+  'generating-proof': 'Generating ZK proof...',
+  submitting: 'Submitting withdrawal...',
+  done: 'Done!',
+}
+
 function WithdrawTab({
   isAuthenticated,
   address,
+  publicClient,
+  vaultAddress,
 }: {
   isAuthenticated: boolean
   address: string | undefined
+  publicClient: PublicClient
+  vaultAddress: `0x${string}`
 }) {
   const [note, setNote] = useState('')
   const [recipient, setRecipient] = useState('')
+  const [isWithdrawing, setIsWithdrawing] = useState(false)
+  const [withdrawStep, setWithdrawStep] = useState<WithdrawStep | null>(null)
+  const [withdrawError, setWithdrawError] = useState<string | null>(null)
+  const [withdrawTxHash, setWithdrawTxHash] = useState<string | null>(null)
+
+  const handleWithdraw = useCallback(async () => {
+    if (!note.trim() || !recipient.trim()) return
+
+    try {
+      setWithdrawError(null)
+      setWithdrawTxHash(null)
+      setIsWithdrawing(true)
+
+      const result = await executeWithdraw(
+        note.trim(),
+        recipient.trim() as `0x${string}`,
+        publicClient,
+        vaultAddress,
+        VAULT_WITHDRAW_ENDPOINT,
+        setWithdrawStep,
+      )
+
+      setWithdrawTxHash(result.transactionHash)
+    } catch (error) {
+      console.error('Withdrawal failed', error)
+      setWithdrawError(
+        error instanceof Error ? error.message : 'Withdrawal failed',
+      )
+    } finally {
+      setIsWithdrawing(false)
+      setWithdrawStep(null)
+    }
+  }, [note, recipient, publicClient, vaultAddress])
 
   return (
     <div className="space-y-6">
@@ -275,8 +325,9 @@ function WithdrawTab({
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Paste your withdrawal note here..."
+          placeholder='Paste your withdrawal note JSON here...'
           rows={3}
+          disabled={isWithdrawing}
           className="w-full resize-none rounded-xl border border-zinc-700 bg-zinc-800/50 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-violet-500/60"
         />
       </div>
@@ -292,6 +343,7 @@ function WithdrawTab({
             value={recipient}
             onChange={(e) => setRecipient(e.target.value)}
             placeholder="0x..."
+            disabled={isWithdrawing}
             className="w-full! rounded-xl! border! border-zinc-700! bg-zinc-800/50! px-4! py-3! text-sm! text-white placeholder-zinc-500 outline-none transition focus:border-violet-500/60!"
           />
           {isAuthenticated && address && (
@@ -299,6 +351,7 @@ function WithdrawTab({
               type="button"
               onClick={() => setRecipient(address)}
               title="Use my address"
+              disabled={isWithdrawing}
               className="shrink-0 rounded-xl border border-zinc-700 bg-zinc-800/50 px-3 py-3 text-xs font-medium text-zinc-400 transition hover:border-zinc-600 hover:text-white"
             >
               Me
@@ -307,16 +360,52 @@ function WithdrawTab({
         </div>
       </div>
 
+      {/* Progress indicator */}
+      {isWithdrawing && withdrawStep && (
+        <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-3 text-sm text-violet-200">
+          <div className="flex items-center gap-2">
+            <Spinner />
+            <span>{STEP_LABELS[withdrawStep]}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Error */}
+      {withdrawError && (
+        <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          {withdrawError}
+        </div>
+      )}
+
+      {/* Success */}
+      {withdrawTxHash && (
+        <div className="rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm text-green-300">
+          <p className="font-medium">Withdrawal successful!</p>
+          <a
+            href={`https://sepolia.basescan.org/tx/${withdrawTxHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 block text-xs text-green-400 underline break-all"
+          >
+            {withdrawTxHash}
+          </a>
+        </div>
+      )}
+
       {/* Action button */}
       {isAuthenticated ? (
-        <button className="w-full rounded-xl bg-linear-to-r from-violet-500 to-cyan-400 py-3.5 text-base font-semibold text-white shadow-lg shadow-violet-500/20 transition hover:shadow-violet-500/30 hover:opacity-95">
-          Withdraw
+        <button
+          className="w-full rounded-xl bg-linear-to-r from-violet-500 to-cyan-400 py-3.5 text-base font-semibold text-white shadow-lg shadow-violet-500/20 transition hover:shadow-violet-500/30 hover:opacity-95 disabled:opacity-50"
+          onClick={handleWithdraw}
+          disabled={isWithdrawing || !note.trim() || !recipient.trim()}
+          type="button"
+        >
+          {isWithdrawing ? <Spinner /> : 'Withdraw'}
         </button>
       ) : (
         <button className="w-full rounded-xl bg-linear-to-r from-violet-500 to-cyan-400 py-3.5 text-base font-semibold text-white shadow-lg shadow-violet-500/20 transition hover:shadow-violet-500/30 hover:opacity-95">
           Log In to Withdraw
         </button>
-        // <OpenfortButton label="Log In to withdraw" customTheme={depositButtonTheme} />
       )}
     </div>
   )
@@ -401,7 +490,7 @@ export function AppPage() {
         )
       }
 
-      const note = generateVaultNote()
+      const note = await generateVaultNote()
 
       const authorization = await createVaultAuthorization(
         walletClient,
@@ -607,6 +696,8 @@ export function AppPage() {
               <WithdrawTab
                 isAuthenticated={isAuthenticated}
                 address={address}
+                publicClient={publicClient as PublicClient}
+                vaultAddress={getVaultConfig(paymentChain.id).vaultAddress}
               />
             )}
           </div>

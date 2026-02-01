@@ -1,9 +1,47 @@
-import { concat, keccak256, toBytes, toHex } from 'viem'
+// @ts-expect-error -- circomlibjs has no type declarations
+import { buildPedersenHash, buildBabyjub } from 'circomlibjs'
 
 // BN254 scalar field prime - commitments must be less than this value
 const FIELD_SIZE = BigInt(
   '21888242871839275222246405745257275088548364400416034343698204186575808495617',
 )
+
+// Lazy-loaded circomlibjs instances (they boot a WASM module)
+let pedersenHash: Awaited<ReturnType<typeof buildPedersenHash>> | null = null
+let babyJub: Awaited<ReturnType<typeof buildBabyjub>> | null = null
+
+async function getPedersen() {
+  if (!pedersenHash || !babyJub) {
+    pedersenHash = await buildPedersenHash()
+    babyJub = await buildBabyjub()
+  }
+  return { pedersenHash, babyJub }
+}
+
+/**
+ * Convert a bigint to a little-endian buffer of `byteLen` bytes
+ */
+function toBufferLE(value: bigint, byteLen: number): Uint8Array {
+  const buf = new Uint8Array(byteLen)
+  let v = value
+  for (let i = 0; i < byteLen; i++) {
+    buf[i] = Number(v & 0xffn)
+    v >>= 8n
+  }
+  return buf
+}
+
+/**
+ * Pedersen hash over raw bytes, returning the x-coordinate on BabyJub (field element).
+ * This matches circomlib's Pedersen(N) template output[0].
+ */
+async function pedersenHashBytes(data: Uint8Array): Promise<bigint> {
+  const { pedersenHash: pedersen, babyJub: bj } = await getPedersen()
+  const point = pedersen.hash(data)
+  const unpackedPoint = bj.unpackPoint(point)
+  // The circuit outputs the x-coordinate (index 0)
+  return bj.F.toObject(unpackedPoint[0]) as bigint
+}
 
 /**
  * Generates a random note (secret)
@@ -34,20 +72,31 @@ export function generateNullifier(): bigint {
 }
 
 /**
- * Creates a commitment hash from a note and nullifier
- * For simplicity, we use Keccak256 hash of concatenated values
- * (In production, this should use MiMC-Sponge hash to match the circuit)
- * @param note The secret note (248 bits)
- * @param nullifier The nullifier (248 bits)
- * @returns The commitment hash (bytes32)
+ * Creates a commitment hash using Pedersen(496) from circomlibjs.
+ * The input is 496 bits: nullifier (248 bits LE) || secret (248 bits LE).
+ * This matches the CommitmentHasher template in withdraw.circom.
  */
-export function createCommitment(note: bigint, nullifier: bigint): string {
-  const noteBytes = toBytes(note, { size: 32 })
-  const nullifierBytes = toBytes(nullifier, { size: 32 })
-  const hash = keccak256(concat([noteBytes, nullifierBytes]))
-  // Reduce modulo BN254 field size so the commitment fits in the MiMC Merkle tree
-  const reduced = BigInt(hash) % FIELD_SIZE
-  return toHex(reduced, { size: 32 })
+export async function createCommitment(
+  secret: bigint,
+  nullifier: bigint,
+): Promise<bigint> {
+  const nullifierBuf = toBufferLE(nullifier, 31) // 248 bits = 31 bytes
+  const secretBuf = toBufferLE(secret, 31)
+  const preimage = new Uint8Array(62) // 496 bits = 62 bytes
+  preimage.set(nullifierBuf, 0)
+  preimage.set(secretBuf, 31)
+  return pedersenHashBytes(preimage)
+}
+
+/**
+ * Creates a nullifier hash using Pedersen(248) from circomlibjs.
+ * This matches the nullifierHasher in withdraw.circom.
+ */
+export async function createNullifierHash(
+  nullifier: bigint,
+): Promise<bigint> {
+  const nullifierBuf = toBufferLE(nullifier, 31) // 248 bits = 31 bytes
+  return pedersenHashBytes(nullifierBuf)
 }
 
 /**
@@ -62,10 +111,12 @@ export interface VaultNote {
 /**
  * Generates a complete note ready for vault deposit
  */
-export function generateVaultNote(): VaultNote {
+export async function generateVaultNote(): Promise<VaultNote> {
   const note = generateNote()
   const nullifier = generateNullifier()
-  const commitment = createCommitment(note, nullifier)
+  const commitmentBigInt = await createCommitment(note, nullifier)
+  // Pad to 32 bytes hex
+  const commitment = `0x${commitmentBigInt.toString(16).padStart(64, '0')}`
 
   return {
     note,
