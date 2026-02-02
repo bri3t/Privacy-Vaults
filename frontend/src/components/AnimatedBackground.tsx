@@ -2,62 +2,46 @@ import { motion } from 'framer-motion'
 
 const orbs = [
   {
-    size: 300,
-    x: '10%',
-    y: '20%',
-    color: 'rgba(139,92,246,0.15)',
+    className: 'w-[600px] h-[600px] bg-violet-600/20',
+    animate: { x: [0, 100, -50, 0], y: [0, -80, 60, 0], scale: [1, 1.2, 0.9, 1] },
     duration: 20,
+    style: { top: '-10%', left: '-5%' },
   },
   {
-    size: 250,
-    x: '70%',
-    y: '10%',
-    color: 'rgba(34,211,238,0.12)',
+    className: 'w-[500px] h-[500px] bg-cyan-500/15',
+    animate: { x: [0, -70, 80, 0], y: [0, 100, -40, 0], scale: [1, 0.8, 1.1, 1] },
     duration: 25,
+    style: { top: '30%', right: '-10%' },
   },
   {
-    size: 200,
-    x: '80%',
-    y: '60%',
-    color: 'rgba(139,92,246,0.10)',
+    className: 'w-[400px] h-[400px] bg-violet-500/10',
+    animate: { x: [0, 60, -90, 0], y: [0, -60, 80, 0], scale: [1, 1.15, 0.85, 1] },
     duration: 22,
+    style: { bottom: '-5%', left: '20%' },
   },
   {
-    size: 350,
-    x: '30%',
-    y: '70%',
-    color: 'rgba(34,211,238,0.08)',
-    duration: 28,
-  },
-  {
-    size: 150,
-    x: '50%',
-    y: '40%',
-    color: 'rgba(139,92,246,0.12)',
+    className: 'w-[350px] h-[350px] bg-cyan-400/10',
+    animate: { x: [0, -40, 60, 0], y: [0, 70, -50, 0], scale: [1, 0.9, 1.1, 1] },
     duration: 18,
+    style: { top: '10%', left: '50%' },
+  },
+  {
+    className: 'w-[300px] h-[300px] bg-violet-400/10',
+    animate: { x: [0, 80, -60, 0], y: [0, -40, 90, 0], scale: [1, 1.1, 0.95, 1] },
+    duration: 24,
+    style: { bottom: '20%', right: '15%' },
   },
 ]
 
 export function AnimatedBackground() {
   return (
-    <div className="fixed inset-0 -z-10 overflow-hidden bg-zinc-950">
-      <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950" />
+    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
       {orbs.map((orb, i) => (
         <motion.div
           key={i}
-          className="absolute rounded-full blur-3xl"
-          style={{
-            width: orb.size,
-            height: orb.size,
-            left: orb.x,
-            top: orb.y,
-            background: orb.color,
-          }}
-          animate={{
-            x: [0, 30, -20, 10, 0],
-            y: [0, -20, 15, -10, 0],
-            scale: [1, 1.1, 0.95, 1.05, 1],
-          }}
+          className={`absolute rounded-full blur-3xl ${orb.className}`}
+          style={orb.style}
+          animate={orb.animate}
           transition={{
             duration: orb.duration,
             repeat: Infinity,

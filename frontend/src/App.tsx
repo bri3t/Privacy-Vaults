@@ -1,16 +1,31 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import { AppPage } from './pages/AppPage'
-import { LandingPage } from './pages/LandingPage'
+import { useState, useEffect, useCallback } from 'react'
+import { LandingPage } from './pages/LandingPage.tsx'
+import { VaultPage } from './pages/VaultPage.tsx'
 
-function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/app" element={<AppPage />} />
-      </Routes>
-    </BrowserRouter>
-  )
+type Page = 'landing' | 'app'
+
+function pathToPage(pathname: string): Page {
+  return pathname === '/app' ? 'app' : 'landing'
 }
 
-export default App
+export default function App() {
+  const [page, setPage] = useState<Page>(() => pathToPage(window.location.pathname))
+
+  const navigate = useCallback((target: Page) => {
+    const path = target === 'app' ? '/app' : '/'
+    window.history.pushState(null, '', path)
+    setPage(target)
+  }, [])
+
+  useEffect(() => {
+    const onPopState = () => setPage(pathToPage(window.location.pathname))
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  if (page === 'landing') {
+    return <LandingPage onLaunch={() => navigate('app')} />
+  }
+
+  return <VaultPage onBack={() => navigate('landing')} />
+}

@@ -1,298 +1,224 @@
-import {
-  BoltIcon,
-  CurrencyDollarIcon,
-  EyeSlashIcon,
-  ShieldCheckIcon,
-} from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
-import { AnimatedBackground } from '../components/AnimatedBackground'
+import { AnimatedBackground } from '../components/AnimatedBackground.tsx'
+import { Spotlight } from '../components/Spotlight.tsx'
+import { FlipWords } from '../components/FlipWords.tsx'
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0 },
-}
-
-const stagger = {
-  visible: { transition: { staggerChildren: 0.15 } },
+interface LandingPageProps {
+  onLaunch: () => void
 }
 
 const features = [
   {
-    icon: BoltIcon,
-    title: 'Zero Gas Fees',
+    title: 'Privacy First',
     description:
-      "Deposit assets without paying gas. The x402 protocol handles transaction costs so you don't have to.",
+      'Deposit and withdraw USDC without linking sender and receiver addresses on-chain.',
+    icon: (
+      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+      </svg>
+    ),
   },
   {
-    icon: EyeSlashIcon,
-    title: 'Private Withdrawals',
+    title: 'Zero-Knowledge Proofs',
     description:
-      'Break the on-chain link between deposits and withdrawals. Your financial privacy is preserved.',
+      'Noir-powered ZK circuits with Poseidon2 hashing ensure mathematical privacy guarantees.',
+    icon: (
+      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+      </svg>
+    ),
   },
   {
-    icon: CurrencyDollarIcon,
-    title: 'Multi-Asset Support',
+    title: 'Gasless Transactions',
     description:
-      'Deposit USDC or ETH with flexible amounts. More assets coming soon.',
+      'EIP-3009 authorization enables deposits without needing ETH for gas fees.',
+    icon: (
+      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+      </svg>
+    ),
   },
 ]
 
 const steps = [
-  {
-    number: '01',
-    title: 'Choose Asset & Amount',
-    description: 'Select your token and deposit size',
-  },
-  {
-    number: '02',
-    title: 'Deposit via x402',
-    description: 'Gasless deposit through the x402 protocol',
-  },
-  {
-    number: '03',
-    title: 'Receive Withdrawal Note',
-    description: 'Get a private note to withdraw later',
-  },
+  { number: '01', title: 'Deposit', description: 'Deposit 1 USDC and receive a secret withdrawal note.' },
+  { number: '02', title: 'Wait', description: 'Let your deposit mix with others in the vault for enhanced privacy.' },
+  { number: '03', title: 'Withdraw', description: 'Use your note to withdraw to any address with zero-knowledge proof.' },
 ]
 
-export function LandingPage() {
+const fadeUp = {
+  hidden: { opacity: 0, y: 30 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.1, duration: 0.6, ease: 'easeOut' as const },
+  }),
+}
+
+export function LandingPage({ onLaunch }: LandingPageProps) {
   return (
-    <div className="relative min-h-screen text-white">
+    <div className="relative min-h-screen bg-zinc-950 text-white overflow-hidden">
       <AnimatedBackground />
 
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 backdrop-blur-xl bg-zinc-950/60">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <span className="text-lg font-bold tracking-tight">
+      <nav className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-zinc-950/60 border-b border-white/[0.06]">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <span className="text-lg font-bold bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
             Privacy Vault
           </span>
-          <div className="hidden items-center gap-8 md:flex">
-            <a
-              href="#features"
-              className="text-sm text-zinc-400 transition hover:text-white"
-            >
-              Features
-            </a>
-            <a
-              href="#how-it-works"
-              className="text-sm text-zinc-400 transition hover:text-white"
-            >
-              How it Works
-            </a>
-            <a
-              href="#security"
-              className="text-sm text-zinc-400 transition hover:text-white"
-            >
-              Security
-            </a>
-          </div>
-          <Link
-            to="/app"
-            className="rounded-lg bg-gradient-to-r from-violet-500 to-cyan-400 px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+          <button
+            onClick={onLaunch}
+            className="px-5 py-2 rounded-lg bg-gradient-to-r from-violet-500 to-cyan-400 text-white text-sm font-medium hover:shadow-lg hover:shadow-violet-500/25 transition-shadow"
           >
             Launch App
-          </Link>
+          </button>
         </div>
       </nav>
 
       {/* Hero */}
-      <section className="flex min-h-screen flex-col items-center justify-center px-6 pt-20 text-center">
+      <Spotlight className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 pt-16" fill="rgba(139,92,246,0.3)">
         <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={stagger}
-          className="mx-auto max-w-3xl"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="text-center max-w-3xl"
         >
-          <motion.p
-            variants={fadeUp}
-            transition={{ duration: 0.5 }}
-            className="mb-4 inline-block rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-1.5 text-sm text-violet-300"
-          >
-            Built on Base &middot; Powered by x402
-          </motion.p>
-          <motion.h1
-            variants={fadeUp}
-            transition={{ duration: 0.5 }}
-            className="!text-5xl !font-extrabold leading-tight tracking-tight md:!text-7xl"
-          >
-            Private Transactions,{' '}
-            <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
-              Zero Gas Fees
-            </span>
-          </motion.h1>
-          <motion.p
-            variants={fadeUp}
-            transition={{ duration: 0.5 }}
-            className="mx-auto mt-6 max-w-xl text-lg text-zinc-400"
-          >
-            Deposit tokens into a privacy vault using the x402 gasless protocol.
-            Break the on-chain link between your deposits and withdrawals.
-          </motion.p>
-          <motion.div
-            variants={fadeUp}
-            transition={{ duration: 0.5 }}
-            className="mt-10"
-          >
-            <Link
-              to="/app"
-              className="inline-block rounded-xl bg-gradient-to-r from-violet-500 to-cyan-400 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:shadow-violet-500/40 hover:opacity-95"
+          <h1 className="text-5xl sm:text-7xl font-bold tracking-tight leading-tight">
+            <FlipWords words={['Private', 'Trustless', 'Gasless']} />
+            <br />
+            <span className="text-white">USDC Transfers</span>
+          </h1>
+          <p className="mt-6 text-lg sm:text-xl text-zinc-400 max-w-xl mx-auto">
+            Break the on-chain link between sender and receiver. Deposit and withdraw
+            USDC with zero-knowledge proofs on Base.
+          </p>
+          <div className="mt-10 flex items-center justify-center gap-4">
+            <button
+              onClick={onLaunch}
+              className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-violet-500 to-cyan-400 text-white font-semibold text-lg hover:shadow-xl hover:shadow-violet-500/25 transition-all"
             >
-              Start Depositing
-            </Link>
-          </motion.div>
+              Launch App
+            </button>
+            <a
+              href="https://github.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-8 py-3.5 rounded-xl border border-zinc-700 text-zinc-300 font-medium text-lg hover:border-zinc-500 hover:text-white transition-colors"
+            >
+              Learn More
+            </a>
+          </div>
         </motion.div>
-      </section>
+      </Spotlight>
 
       {/* Features */}
-      <section id="features" className="relative px-6 py-32">
-        <div className="mx-auto max-w-5xl">
-          <motion.h2
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-100px' }}
-            variants={fadeUp}
-            transition={{ duration: 0.5 }}
-            className="mb-16 text-center !text-4xl !font-bold"
-          >
-            Why Privacy Vault?
-          </motion.h2>
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-100px' }}
-            variants={stagger}
-            className="grid gap-6 md:grid-cols-3"
-          >
-            {features.map((f) => (
-              <motion.div
-                key={f.title}
-                variants={fadeUp}
-                transition={{ duration: 0.5 }}
-                className="glass-card group rounded-2xl p-8"
-              >
-                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400 transition group-hover:bg-violet-500/20">
-                  <f.icon className="h-6 w-6" />
-                </div>
-                <h3 className="mb-2 text-lg font-semibold">{f.title}</h3>
-                <p className="text-sm leading-relaxed text-zinc-400">
-                  {f.description}
-                </p>
-              </motion.div>
-            ))}
-          </motion.div>
+      <section className="relative z-10 max-w-6xl mx-auto px-6 py-24">
+        <motion.h2
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={fadeUp}
+          custom={0}
+          className="text-3xl sm:text-4xl font-bold text-center mb-16"
+        >
+          Built for{' '}
+          <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
+            Financial Privacy
+          </span>
+        </motion.h2>
+        <div className="grid md:grid-cols-3 gap-6">
+          {features.map((f, i) => (
+            <motion.div
+              key={f.title}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={fadeUp}
+              custom={i + 1}
+              className="glass-card rounded-2xl p-8 hover:border-violet-500/20 transition-colors"
+            >
+              <div className="w-14 h-14 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-400 mb-5">
+                {f.icon}
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-3">{f.title}</h3>
+              <p className="text-zinc-400 leading-relaxed">{f.description}</p>
+            </motion.div>
+          ))}
         </div>
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="relative px-6 py-32">
-        <div className="mx-auto max-w-5xl">
-          <motion.h2
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-100px' }}
-            variants={fadeUp}
-            transition={{ duration: 0.5 }}
-            className="mb-16 text-center !text-4xl !font-bold"
-          >
-            How It Works
-          </motion.h2>
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-100px' }}
-            variants={stagger}
-            className="grid gap-8 md:grid-cols-3"
-          >
-            {steps.map((step, i) => (
-              <motion.div
-                key={step.number}
-                variants={fadeUp}
-                transition={{ duration: 0.5 }}
-                className="relative"
-              >
-                {i < steps.length - 1 && (
-                  <div className="absolute right-0 top-10 hidden h-px w-8 translate-x-full bg-gradient-to-r from-violet-500/50 to-transparent md:block" />
-                )}
-                <div className="glass-card rounded-2xl p-8">
-                  <span className="mb-4 inline-block bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-3xl font-bold text-transparent">
-                    {step.number}
-                  </span>
-                  <h3 className="mb-2 text-lg font-semibold">{step.title}</h3>
-                  <p className="text-sm text-zinc-400">{step.description}</p>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
+      <section className="relative z-10 max-w-6xl mx-auto px-6 py-24">
+        <motion.h2
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={fadeUp}
+          custom={0}
+          className="text-3xl sm:text-4xl font-bold text-center mb-16"
+        >
+          How It Works
+        </motion.h2>
+        <div className="grid md:grid-cols-3 gap-6">
+          {steps.map((s, i) => (
+            <motion.div
+              key={s.number}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={fadeUp}
+              custom={i + 1}
+              className="glass-card rounded-2xl p-8"
+            >
+              <span className="text-4xl font-bold bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
+                {s.number}
+              </span>
+              <h3 className="text-xl font-semibold text-white mt-4 mb-3">
+                {s.title}
+              </h3>
+              <p className="text-zinc-400 leading-relaxed">{s.description}</p>
+            </motion.div>
+          ))}
         </div>
       </section>
 
       {/* Security */}
-      <section id="security" className="relative px-6 py-32">
-        <div className="mx-auto max-w-2xl text-center">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-100px' }}
-            variants={stagger}
-          >
-            <motion.div
-              variants={fadeUp}
-              transition={{ duration: 0.5 }}
-              className="mb-8 flex justify-center"
-            >
-              <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-violet-500/10">
-                <ShieldCheckIcon className="h-10 w-10 text-violet-400" />
-              </div>
-            </motion.div>
-            <motion.h2
-              variants={fadeUp}
-              transition={{ duration: 0.5 }}
-              className="!text-4xl !font-bold"
-            >
-              Security First
-            </motion.h2>
-            <motion.p
-              variants={fadeUp}
-              transition={{ duration: 0.5 }}
-              className="mt-4 text-lg text-zinc-400"
-            >
-              All deposits are secured by audited smart contracts on Base. The
-              x402 protocol ensures gasless transactions without compromising on
-              security. Your withdrawal notes are generated client-side and
-              never leave your device.
-            </motion.p>
-          </motion.div>
-        </div>
+      <section className="relative z-10 max-w-3xl mx-auto px-6 py-24">
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={fadeUp}
+          custom={0}
+          className="glass-card rounded-2xl p-10 text-center"
+        >
+          <div className="w-16 h-16 rounded-2xl bg-violet-500/10 flex items-center justify-center text-violet-400 mx-auto mb-6">
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+            </svg>
+          </div>
+          <h3 className="text-2xl font-bold text-white mb-4">
+            Cryptographic Security
+          </h3>
+          <p className="text-zinc-400 leading-relaxed max-w-lg mx-auto">
+            Every withdrawal is verified by a zero-knowledge proof generated in your browser.
+            Your secrets never leave your device. The smart contract only sees mathematical
+            proof that you have the right to withdraw — not who deposited.
+          </p>
+        </motion.div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 px-6 py-10">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 md:flex-row">
-          <span className="text-sm font-semibold">Privacy Vault</span>
-          <div className="flex items-center gap-6">
-            <a
-              href="#features"
-              className="text-sm text-zinc-500 transition hover:text-white"
-            >
-              Features
-            </a>
-            <a
-              href="#how-it-works"
-              className="text-sm text-zinc-500 transition hover:text-white"
-            >
-              How it Works
-            </a>
-            <a
-              href="#security"
-              className="text-sm text-zinc-500 transition hover:text-white"
-            >
-              Security
-            </a>
-          </div>
-          <span className="rounded-full border border-zinc-700 bg-zinc-800/50 px-3 py-1 text-xs text-zinc-400">
-            Built on Base
+      <footer className="relative z-10 border-t border-white/[0.06] py-8">
+        <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <span className="text-sm text-zinc-500">
+            Privacy Vault — Open Source
           </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-zinc-600 px-3 py-1 rounded-full border border-zinc-800 bg-zinc-900/50">
+              Built on Base
+            </span>
+          </div>
         </div>
       </footer>
     </div>
