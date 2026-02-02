@@ -4,65 +4,25 @@ import { base, baseSepolia } from "viem/chains";
 import type { Config } from "./config.js";
 
 /**
- * PrivacyVault contract ABI (minimal - only depositWithAuthorization function)
+ * PrivacyVault contract ABI (matching on-chain contract)
  */
 const PRIVACY_VAULT_ABI = [
     {
         inputs: [
-            {
-                internalType: "bytes32",
-                name: "_commitment",
-                type: "bytes32",
-            },
-            {
-                internalType: "address",
-                name: "_from",
-                type: "address",
-            },
-            {
-                internalType: "uint256",
-                name: "_validAfter",
-                type: "uint256",
-            },
-            {
-                internalType: "uint256",
-                name: "_validBefore",
-                type: "uint256",
-            },
-            {
-                internalType: "bytes32",
-                name: "_nonce",
-                type: "bytes32",
-            },
-            {
-                internalType: "uint8",
-                name: "_v",
-                type: "uint8",
-            },
-            {
-                internalType: "bytes32",
-                name: "_r",
-                type: "bytes32",
-            },
-            {
-                internalType: "bytes32",
-                name: "_s",
-                type: "bytes32",
-            },
+            { name: "_commitment", type: "bytes32" },
+            { name: "_receiveAuthorization", type: "bytes" },
         ],
         name: "depositWithAuthorization",
         outputs: [],
-        stateMutability: "nonpayable",
+        stateMutability: "payable",
         type: "function",
     },
     {
         inputs: [
-            { internalType: "uint256[2]", name: "_pA", type: "uint256[2]" },
-            { internalType: "uint256[2][2]", name: "_pB", type: "uint256[2][2]" },
-            { internalType: "uint256[2]", name: "_pC", type: "uint256[2]" },
-            { internalType: "bytes32", name: "_root", type: "bytes32" },
-            { internalType: "bytes32", name: "_nullifierHash", type: "bytes32" },
-            { internalType: "address", name: "_recipient", type: "address" },
+            { name: "_proof", type: "bytes" },
+            { name: "_root", type: "bytes32" },
+            { name: "_nullifierHash", type: "bytes32" },
+            { name: "_recipient", type: "address" },
         ],
         name: "withdraw",
         outputs: [],
@@ -76,15 +36,7 @@ const PRIVACY_VAULT_ABI = [
  */
 export interface VaultDepositRequest {
     commitment: string; // bytes32 hex string
-    from: string; // user address
-    to: string; // vault address
-    value: string; // bigint as string
-    validAfter: string; // bigint as string
-    validBefore: string; // bigint as string
-    nonce: string; // bytes32 hex string
-    v: number;
-    r: string; // bytes32 hex string
-    s: string; // bytes32 hex string
+    encodedAuth: string; // ABI-encoded receiveWithAuthorization params
 }
 
 /**
@@ -101,9 +53,7 @@ export interface VaultDepositResponse {
  * Request body for vault withdrawal
  */
 export interface VaultWithdrawRequest {
-    pA: [string, string];
-    pB: [[string, string], [string, string]];
-    pC: [string, string];
+    proof: string; // ABI-encoded proof bytes
     root: string; // bytes32 hex string
     nullifierHash: string; // bytes32 hex string
     recipient: string; // address
@@ -174,15 +124,8 @@ export async function relayVaultDeposit(
         const transactionHash = await vaultContract.write.depositWithAuthorization(
             [
                 request.commitment as `0x${string}`,
-                request.from as Address,
-                BigInt(request.validAfter),
-                BigInt(request.validBefore),
-                request.nonce as `0x${string}`,
-                request.v,
-                request.r as `0x${string}`,
-                request.s as `0x${string}`,
+                request.encodedAuth as `0x${string}`,
             ],
-            {},
         );
 
         // Wait for receipt
@@ -244,14 +187,8 @@ export async function relayVaultWithdraw(
             client: walletClient,
         });
 
-        const pA = request.pA.map(BigInt) as [bigint, bigint];
-        const pB = request.pB.map((pair) => pair.map(BigInt) as [bigint, bigint]) as [[bigint, bigint], [bigint, bigint]];
-        const pC = request.pC.map(BigInt) as [bigint, bigint];
-
         const transactionHash = await vaultContract.write.withdraw([
-            pA,
-            pB,
-            pC,
+            request.proof as `0x${string}`,
             request.root as `0x${string}`,
             request.nullifierHash as `0x${string}`,
             request.recipient as Address,

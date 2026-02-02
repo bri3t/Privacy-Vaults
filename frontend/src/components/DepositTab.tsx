@@ -1,11 +1,8 @@
-import { useUser, useWallets, type UserWallet, OpenfortButton } from "@openfort/react";
+import { OpenfortButton } from "@openfort/react";
 import { useDeposit } from '../hooks/useDeposit.ts'
 import { useUsdcBalance } from '../hooks/useUsdcBalance.ts'
 import { StatusIndicator } from './StatusIndicator.tsx'
 import { NoteModal } from './NoteModal.tsx'
-import { useAccount, useSwitchChain, useWriteContract } from "wagmi";
-import { erc20Abi, createPublicClient, http } from "viem";
-import { useCallback, useMemo } from "react";
 
 
 

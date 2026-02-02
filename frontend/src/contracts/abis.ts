@@ -59,7 +59,7 @@ export const RECEIVE_WITH_AUTHORIZATION_TYPES = {
 } as const
 
 export const USDC_DOMAIN = {
-  name: 'USD Coin',
+  name: 'USDC',
   version: '2',
   chainId: 84532,
   verifyingContract: '0x036CbD53842c5426634e7929541eC2318f3dCF7e' as const,

@@ -115,32 +115,33 @@ export async function handleVaultDeposit(
 ): Promise<void> {
   try {
     const parsedBody = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-    const authorization = parsedBody?.authorization ?? parsedBody?.payload?.authorization ?? parsedBody;
-    const body = {
-      commitment: parsedBody?.commitment ?? parsedBody?.payload?.commitment,
-      from: authorization?.from ?? parsedBody?.from,
-      to: authorization?.to ?? parsedBody?.to,
-      value: authorization?.value ?? parsedBody?.value,
-      validAfter: authorization?.validAfter ?? parsedBody?.validAfter,
-      validBefore: authorization?.validBefore ?? parsedBody?.validBefore,
-      nonce: authorization?.nonce ?? parsedBody?.nonce,
-      v: authorization?.v ?? parsedBody?.v,
-      r: authorization?.r ?? parsedBody?.r,
-      s: authorization?.s ?? parsedBody?.s,
-    } as VaultDepositRequest;
+    const body: VaultDepositRequest = {
+      commitment: parsedBody?.commitment,
+      encodedAuth: parsedBody?.encodedAuth,
+    };
 
     // Validate required fields
-    if (
-      !body.commitment ||
-      !body.from ||
-      body.v === undefined ||
-      body.v === null ||
-      !body.r ||
-      !body.s
-    ) {
+    if (!body.commitment || !body.encodedAuth) {
       res.status(400).json({
-        error: "Missing required fields: commitment, from, v, r, s",
+        error: "Missing required fields: commitment, encodedAuth",
         receivedKeys: Object.keys(parsedBody ?? {}),
+      });
+      return;
+    }
+
+    // Validate hex format
+    const hexPattern = /^0x[0-9a-fA-F]+$/;
+    if (!hexPattern.test(body.commitment) || !hexPattern.test(body.encodedAuth)) {
+      res.status(400).json({
+        error: "Invalid hex format for commitment or encodedAuth",
+      });
+      return;
+    }
+
+    // Validate commitment is bytes32 (66 chars = 0x + 64 hex)
+    if (body.commitment.length !== 66) {
+      res.status(400).json({
+        error: "commitment must be a bytes32 hex string (66 characters)",
       });
       return;
     }
@@ -182,17 +183,21 @@ export async function handleVaultWithdraw(
   try {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
 
-    if (!body.pA || !body.pB || !body.pC || !body.root || !body.nullifierHash || !body.recipient) {
+    if (!body.proof || !body.root || !body.nullifierHash || !body.recipient) {
       res.status(400).json({
-        error: "Missing required fields: pA, pB, pC, root, nullifierHash, recipient",
+        error: "Missing required fields: proof, root, nullifierHash, recipient",
       });
       return;
     }
 
+    const hexPattern = /^0x[0-9a-fA-F]+$/;
+    if (!hexPattern.test(body.proof) || !hexPattern.test(body.root) || !hexPattern.test(body.nullifierHash)) {
+      res.status(400).json({ error: "Invalid hex format" });
+      return;
+    }
+
     const request: VaultWithdrawRequest = {
-      pA: body.pA,
-      pB: body.pB,
-      pC: body.pC,
+      proof: body.proof,
       root: body.root,
       nullifierHash: body.nullifierHash,
       recipient: body.recipient,

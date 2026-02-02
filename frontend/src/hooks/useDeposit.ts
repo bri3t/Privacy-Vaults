@@ -1,14 +1,15 @@
 import { useState, useCallback } from 'react'
-import { useWriteContract, useWalletClient } from 'wagmi'
+import { useSignTypedData } from 'wagmi'
 import { encodeAbiParameters, parseAbiParameters, type Hex, toHex, getAddress } from 'viem'
 import { generateCommitment } from '../zk/commitment.ts'
 import { encodeNote } from '../zk/note.ts'
 import {
-  vaultAbi,
   RECEIVE_WITH_AUTHORIZATION_TYPES,
   USDC_DOMAIN,
 } from '../contracts/abis.ts'
 import { VAULT_ADDRESS, DENOMINATION } from '../contracts/addresses.ts'
+
+const RELAYER_URL = import.meta.env.VITE_RELAYER_URL || 'http://localhost:3007'
 
 export type DepositStep =
   | 'idle'
@@ -38,11 +39,10 @@ export function useDeposit({ address, isConnected }: useDepositProps) {
     error: null,
   })
 
-  const { data: walletClient } = useWalletClient()
-  const { writeContractAsync } = useWriteContract()
+  const { signTypedDataAsync } = useSignTypedData()
 
   const deposit = useCallback(async () => {
-    if (!isConnected || !walletClient) {
+    if (!isConnected) {
       setState((s) => ({ ...s, step: 'error', error: 'No wallet connected' }))
       return
     }
@@ -50,14 +50,10 @@ export function useDeposit({ address, isConnected }: useDepositProps) {
     try {
       // Step 1: Generate commitment
       setState({ step: 'generating', note: null, txHash: null, error: null })
-
-      console.log('Generating commitment...')
       const commitment = await generateCommitment()
-      console.log('Commitment generated:', commitment)
-      
-      // Step 2: Sign EIP-3009 ReceiveWithAuthorization
+
+      // Step 2: Sign EIP-3009 ReceiveWithAuthorization (off-chain, gasless)
       setState((s) => ({ ...s, step: 'signing' }))
-      console.log('Signing EIP-3009 authorization...')
       const from = address as `0x${string}`
       const to = VAULT_ADDRESS
       const nowSeconds = Math.floor(Date.now() / 1000)
@@ -67,8 +63,7 @@ export function useDeposit({ address, isConnected }: useDepositProps) {
       crypto.getRandomValues(nonceBytes)
       const nonce = toHex(nonceBytes)
 
-      const signature: Hex = await walletClient.signTypedData({
-        account: from,
+      const signature: Hex = await signTypedDataAsync({
         domain: USDC_DOMAIN,
         types: RECEIVE_WITH_AUTHORIZATION_TYPES,
         primaryType: 'ReceiveWithAuthorization',
@@ -106,23 +101,30 @@ export function useDeposit({ address, isConnected }: useDepositProps) {
         ],
       )
 
-      // Step 3: Submit transaction
+      // Step 3: Submit via backend relayer (relayer pays gas)
       setState((s) => ({ ...s, step: 'submitting' }))
-      const txHash = await writeContractAsync({
-        address: VAULT_ADDRESS,
-        abi: vaultAbi,
-        functionName: 'depositWithAuthorization',
-        args: [commitment.commitmentHex as Hex, encodedAuth],
+      const res = await fetch(`${RELAYER_URL}/api/vault/deposit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          commitment: commitment.commitmentHex,
+          encodedAuth,
+        }),
       })
+
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || data.details || 'Relayer request failed')
+      }
 
       // Step 4: Done
       const note = encodeNote(commitment.commitment, commitment.nullifier, commitment.secret)
-      setState({ step: 'done', note, txHash, error: null })
+      setState({ step: 'done', note, txHash: data.transactionHash, error: null })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
       setState((s) => ({ ...s, step: 'error', error: message }))
     }
-  }, [walletClient, writeContractAsync, isConnected, address])
+  }, [signTypedDataAsync, isConnected, address])
 
   const reset = useCallback(() => {
     setState({ step: 'idle', note: null, txHash: null, error: null })
