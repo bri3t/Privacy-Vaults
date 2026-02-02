@@ -1,11 +1,25 @@
-import { Barretenberg, Fr } from '@aztec/bb.js';
+import { Barretenberg } from '@aztec/bb.js';
+
+function hexToBytes(hex) {
+  const h = hex.startsWith('0x') ? hex.slice(2) : hex;
+  const bytes = new Uint8Array(32);
+  const offset = 32 - h.length / 2;
+  for (let i = 0; i < h.length; i += 2) {
+    bytes[offset + i / 2] = parseInt(h.substring(i, i + 2), 16);
+  }
+  return bytes;
+}
+
+function bytesToHex(bytes) {
+  return '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 async function hashLeftRight(left, right) {
   const bb = await Barretenberg.new();
-  const frLeft = Fr.fromString(left);
-  const frRight = Fr.fromString(right);
-  const hash = await bb.poseidon2Hash([frLeft, frRight]);
-  return hash.toString();
+  const a = hexToBytes(left);
+  const b = hexToBytes(right);
+  const { hash } = await bb.poseidon2Hash({ inputs: [a, b] });
+  return bytesToHex(hash);
 }
 
 export class PoseidonTree {

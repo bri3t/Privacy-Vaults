@@ -1,5 +1,13 @@
-import { Barretenberg, Fr } from "@aztec/bb.js";
+import { Barretenberg } from "@aztec/bb.js";
 import { ethers } from "ethers";
+import { randomBytes } from "crypto";
+
+// Generate a random 32-byte value within the BN254 field
+function randomFieldElement(): Uint8Array {
+  const bytes = randomBytes(32);
+  bytes[0] &= 0x1f; // Clear top 3 bits to ensure value < 2^253 < field modulus
+  return bytes;
+}
 
 // generateCommitment
 export default async function generateCommitment(): Promise<string> {
@@ -7,17 +15,17 @@ export default async function generateCommitment(): Promise<string> {
   const bb = await Barretenberg.new();
 
   // 1. generate nullifier
-  const nullifier = Fr.random();
+  const nullifier = randomFieldElement();
 
   // 2. generate secret
-  const secret = Fr.random();
+  const secret = randomFieldElement();
 
   // 3. create commitment
-  const commitment: Fr = await bb.poseidon2Hash([nullifier, secret]);
+  const { hash: commitment } = await bb.poseidon2Hash({ inputs: [nullifier, secret] });
 
   const result = ethers.AbiCoder.defaultAbiCoder().encode(
     ["bytes32", "bytes32", "bytes32"],
-    [commitment.toBuffer(), nullifier.toBuffer(), secret.toBuffer()]
+    [commitment, nullifier, secret]
   );
 
   return result;
