@@ -4,6 +4,7 @@ import { decodeNote } from '../zk/note.ts'
 import { bytesToHex } from '../zk/utils.ts'
 import { buildMerkleTree } from '../zk/merkleTree.ts'
 import { generateWithdrawProof, computeNullifierHash } from '../zk/proof.ts'
+import { getBarretenberg } from '../zk/barretenberg.ts'
 
 const RELAYER_URL = import.meta.env.VITE_RELAYER_URL || 'http://localhost:3007'
 
@@ -32,9 +33,14 @@ export function useWithdraw() {
   const withdraw = useCallback(
     async (noteHex: string, recipient: string) => {
       try {
-        // Step 1: Decode note
-        const { nullifier, secret, commitment } = decodeNote(noteHex)
-        const commitmentHex = bytesToHex(commitment)
+        // Step 1: Decode note and compute final commitment (inner + yieldIndex)
+        const { nullifier, secret, commitment, yieldIndex } = decodeNote(noteHex)
+        const yieldIndexHex = bytesToHex(yieldIndex)
+
+        // The tree stores finalCommitment = Poseidon2(innerCommitment, yieldIndex)
+        const bb = await getBarretenberg()
+        const { hash: finalCommitment } = await bb.poseidon2Hash({ inputs: [commitment, yieldIndex] })
+        const commitmentHex = bytesToHex(finalCommitment)
 
         // Step 2: Fetch commitments from backend
         setState({ step: 'fetching-events', txHash: null, error: null })
@@ -74,6 +80,7 @@ export function useWithdraw() {
           secret,
           nullifierHash,
           recipient,
+          yieldIndexHex,
           merkleProof.pathElements,
           merkleProof.pathIndices,
         )
@@ -85,6 +92,9 @@ export function useWithdraw() {
             .map((b) => b.toString(16).padStart(2, '0'))
             .join('')) as Hex
 
+        // Convert yield index bytes to decimal string for the contract
+        const yieldIndexDecimal = BigInt(yieldIndexHex).toString()
+
         const res = await fetch(`${RELAYER_URL}/api/vault/withdraw`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -93,6 +103,7 @@ export function useWithdraw() {
             root: root as Hex,
             nullifierHash: nullifierHash as Hex,
             recipient,
+            yieldIndex: yieldIndexDecimal,
           }),
         })
 

@@ -35,16 +35,19 @@ export default async function generateProof() {
   // 1. Get nullifier and secret
   const nullifier = hexToBytes(inputs[0]);
   const secret = hexToBytes(inputs[1]);
+  // inputs[2] = recipient
+  const yieldIndex = hexToBytes(inputs[3]);
 
   // 2. Create the nullifier hash
   const { hash: nullifierHash } = await bb.poseidon2Hash({ inputs: [nullifier] });
 
   // 3. Create merkle tree, insert leaves and get merkle proof for commitment
-  const leaves = inputs.slice(3);
+  const leaves = inputs.slice(4);
 
   const tree = await merkleTree(leaves);
-  // Create the commitment
-  const { hash: commitment } = await bb.poseidon2Hash({ inputs: [nullifier, secret] });
+  // Create the inner commitment, then the final commitment with yield_index
+  const { hash: innerCommitment } = await bb.poseidon2Hash({ inputs: [nullifier, secret] });
+  const { hash: commitment } = await bb.poseidon2Hash({ inputs: [innerCommitment, yieldIndex] });
   const merkleProof = tree.proof(tree.getIndex(bytesToHex(commitment)));
 
   try {
@@ -55,6 +58,7 @@ export default async function generateProof() {
       root: merkleProof.root,
       nullifier_hash: bytesToHex(nullifierHash),
       recipient: inputs[2],
+      yield_index: bytesToHex(yieldIndex),
 
       // Private inputs
       nullifier: bytesToHex(nullifier),

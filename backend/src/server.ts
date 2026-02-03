@@ -3,7 +3,7 @@ import type { Request, Response, NextFunction } from "express";
 import { config } from "dotenv";
 import { loadConfig } from "./config.js";
 import { createOpenfortClient } from "./openfort.js";
-import { handleHealth, handleShieldSession, handleProtectedContent, handleVaultDeposit, handleVaultWithdraw, handleVaultCommitments } from "./routes.js";
+import { handleHealth, handleShieldSession, handleProtectedContent, handleVaultDeposit, handleVaultWithdraw, handleVaultCommitments, handleYieldIndex } from "./routes.js";
 
 // Load .env.local
 config({ path: ".env.local" });
@@ -85,6 +85,7 @@ app.all("/api/protected-content", rateLimit(30, 60_000), (req, res) => handlePro
 app.post("/api/vault/deposit", rateLimit(5, 60_000), (req, res) => handleVaultDeposit(req, res, env.vault));
 app.post("/api/vault/withdraw", rateLimit(5, 60_000), (req, res) => handleVaultWithdraw(req, res, env.vault));
 app.get("/api/vault/commitments", rateLimit(20, 60_000), (_req, res) => handleVaultCommitments(_req, res, env.vault));
+app.get("/api/vault/yield-index", rateLimit(30, 60_000), (_req, res) => handleYieldIndex(_req, res, env.vault));
 
 // 404 handler
 app.use((_req: Request, res: Response) => {

@@ -25,6 +25,7 @@ export async function generateWithdrawProof(
   secret: Uint8Array,
   nullifierHash: string,
   recipient: string,
+  yieldIndex: string,
   pathElements: string[],
   pathIndices: number[],
 ): Promise<WithdrawProofResult> {
@@ -38,6 +39,7 @@ export async function generateWithdrawProof(
     root,
     nullifier_hash: nullifierHash,
     recipient,
+    yield_index: yieldIndex,
     nullifier: bytesToHex(nullifier),
     secret: bytesToHex(secret),
     merkle_proof: pathElements.map((e: string) => e.toString()),

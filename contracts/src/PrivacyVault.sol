@@ -7,6 +7,8 @@ import {IncrementalMerkleTree, Poseidon2} from "./IncrementalMerkleTree.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IPool} from "./interfaces/IPool.sol";
+
 
 contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -14,16 +16,23 @@ contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard {
     // keccak256("receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)")[0:4]
     bytes4 private constant _RECEIVE_WITH_AUTHORIZATION_SELECTOR = 0xef55bec6;
 
-    IERC20 public immutable token; // the USDC token contract (future work: make it generic to support any ERC20)
+    /// @dev Aave uses 27-decimal Ray units for liquidity index
+    uint256 private constant RAY = 1e27;
 
-    IVerifier public immutable i_verifier; // Noir generated i_verifier contract
-    uint256 public immutable DENOMINATION; // the fixed amount of USDC that needs to be sent of the PrivacyVault contract
+    /// @dev Bucket precision: round yield index to this granularity (daily bucket ≈ 1e23)
+    uint256 private constant BUCKET_PRECISION = 1e23;
 
-    mapping(bytes32 => bool) public s_nullifierHashes; // used nullifiers to prevent double spending
-    mapping(bytes32 => bool) public s_commitments; // we store all commitments just to prevent accidental deposits with the same commitment
+    IERC20 public immutable token;
+    IPool public immutable aavePool;
 
-    event DepositWithAuthorization(bytes32 indexed commitment, uint32 leafIndex, uint256 timestamp);
-    event Withdrawal(address to, bytes32 nullifierHash);
+    IVerifier public immutable i_verifier;
+    uint256 public immutable DENOMINATION;
+
+    mapping(bytes32 => bool) public s_nullifierHashes;
+    mapping(bytes32 => bool) public s_commitments;
+
+    event DepositWithAuthorization(bytes32 indexed commitment, uint32 leafIndex, uint256 timestamp, uint256 yieldIndex);
+    event Withdrawal(address to, bytes32 nullifierHash, uint256 payout);
 
     error PrivacyVault__DepositValueMismatch(uint256 expected, uint256 actual);
     error PrivacyVault__PaymentFailed(address recipient, uint256 amount);
@@ -32,38 +41,50 @@ contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard {
     error PrivacyVault__InvalidWithdrawProof();
     error PrivacyVault__FeeExceedsDepositValue(uint256 expected, uint256 actual);
     error PrivacyVault__CommitmentAlreadyAdded(bytes32 commitment);
+    error PrivacyVault__InvalidYieldIndex();
 
-    /**
-     * @dev The constructor
-     * @param _verifier the address of SNARK verifier for this contract
-     * @param _hasher the address of MiMC hash contract
-     * @param _merkleTreeDepth the depth of deposits' Merkle Tree
-     */
-
-    constructor(IVerifier _verifier, Poseidon2 _hasher, uint32 _merkleTreeDepth, uint256 _denomination, IERC20 _token)
-        IncrementalMerkleTree(_merkleTreeDepth, _hasher)
-    {
+    constructor(
+        IVerifier _verifier,
+        Poseidon2 _hasher,
+        uint32 _merkleTreeDepth,
+        uint256 _denomination,
+        IERC20 _token,
+        IPool _aavePool
+    ) IncrementalMerkleTree(_merkleTreeDepth, _hasher) {
         i_verifier = _verifier;
         DENOMINATION = _denomination;
         token = _token;
+        aavePool = _aavePool;
+
+        // Approve Aave pool to spend USDC for supply/withdraw
+        _token.approve(address(_aavePool), type(uint256).max);
     }
 
     /**
-     * @param _commitment the note commitment, which is Poseidon(nullifier + secret)
-     * @param _receiveAuthorization the calldata for EIP-3009 receiveWithAuthorization function
+     * @dev Returns Aave's liquidity index rounded to daily bucket for privacy
      */
-    function depositWithAuthorization(bytes32 _commitment, bytes calldata _receiveAuthorization)
+    function getCurrentBucketedYieldIndex() public view returns (uint256) { 
+        uint256 rawIndex = aavePool.getReserveNormalizedIncome(address(token));
+        return (rawIndex / BUCKET_PRECISION) * BUCKET_PRECISION;
+    }
+
+    /**
+     * @param _innerCommitment the inner commitment Poseidon2(nullifier, secret), computed off-chain
+     * @param _receiveAuthorization the calldata for EIP-3009 receiveWithAuthorization function
+     * @dev Contract computes finalCommitment = Poseidon2(innerCommitment, yieldIndex) on-chain
+     */
+    function depositWithAuthorization(bytes32 _innerCommitment, bytes calldata _receiveAuthorization)
         external
         payable
         nonReentrant
     {
-        // check if the commitment is already added
-        if (s_commitments[_commitment]) revert PrivacyVault__CommitmentAlreadyAdded(_commitment);
+        // Compute yield index and final commitment on-chain (user cannot fake yield index)
+        uint256 yieldIndex = getCurrentBucketedYieldIndex();
+        bytes32 finalCommitment = hashLeftRight(_innerCommitment, bytes32(yieldIndex));
 
-        // add the commitment to the added commitments mapping
-        s_commitments[_commitment] = true;
+        if (s_commitments[finalCommitment]) revert PrivacyVault__CommitmentAlreadyAdded(finalCommitment);
+        s_commitments[finalCommitment] = true;
 
-        // decode the receiveAuthorization to extract the amount and to address
         (address from, address to, uint256 amount) =
             abi.decode(_receiveAuthorization[0:96], (address, address, uint256));
 
@@ -72,40 +93,47 @@ contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard {
         }
         if (to != address(this)) revert PrivacyVault__DepositValueMismatch({expected: DENOMINATION, actual: amount});
 
-        // call the token contract to transfer USDC from the depositor to the PrivacyVault contract
+        // Transfer USDC from depositor to vault via EIP-3009
         (bool success,) =
             address(token).call(abi.encodePacked(_RECEIVE_WITH_AUTHORIZATION_SELECTOR, _receiveAuthorization));
         if (!success) revert PrivacyVault__PaymentFailed({recipient: address(this), amount: amount});
 
-        // insert the commitment into the Merkle tree
-        uint32 insertedIndex = _insert(_commitment);
+        // Supply USDC to Aave to earn yield
+        aavePool.supply(address(token), amount, address(this), 0);
 
-        emit DepositWithAuthorization(_commitment, insertedIndex, block.timestamp);
+        uint32 insertedIndex = _insert(finalCommitment);
+
+        emit DepositWithAuthorization(finalCommitment, insertedIndex, block.timestamp, yieldIndex);
     }
 
-    function withdraw(bytes calldata _proof, bytes32 _root, bytes32 _nullifierHash, address payable _recipient)
-        external
-        nonReentrant
-    {
-        // check if the nullifier is already used
+    function withdraw(
+        bytes calldata _proof,
+        bytes32 _root,
+        bytes32 _nullifierHash,
+        address payable _recipient,
+        uint256 _yieldIndex
+    ) external nonReentrant {
         if (s_nullifierHashes[_nullifierHash]) revert PrivacyVault__NoteAlreadySpent({nullifierHash: _nullifierHash});
-
-        // check if the root is a valid root
         if (!isKnownRoot(_root)) revert PrivacyVault__UnknownRoot({root: _root});
+        if (_yieldIndex == 0) revert PrivacyVault__InvalidYieldIndex();
 
-        bytes32[] memory publicInputs = new bytes32[](3);
-        publicInputs[0] = _root; // the root of the Merkle tree
-        publicInputs[1] = _nullifierHash; // the nullifier hash
-        publicInputs[2] = bytes32(uint256(uint160(address(_recipient)))); // the recipient address
+        bytes32[] memory publicInputs = new bytes32[](4);
+        publicInputs[0] = _root;
+        publicInputs[1] = _nullifierHash;
+        publicInputs[2] = bytes32(uint256(uint160(address(_recipient))));
+        publicInputs[3] = bytes32(_yieldIndex);
 
-        // verify the proof - check the Merkle proof against the root, the ZK proof to check the commitments match, they know a valid nullifier hash and secret, a valid root and the recipient hasn't been modified
         if (!i_verifier.verify(_proof, publicInputs)) revert PrivacyVault__InvalidWithdrawProof();
 
-        s_nullifierHashes[_nullifierHash] = true; // mark the nullifier as used before sending the funds
+        s_nullifierHashes[_nullifierHash] = true;
 
-        // transfer the funds to the recipient
-        token.safeTransfer(_recipient, DENOMINATION);
+        // Calculate yield-adjusted payout: denomination * currentIndex / depositIndex
+        uint256 currentIndex = aavePool.getReserveNormalizedIncome(address(token));
+        uint256 payout = (DENOMINATION * currentIndex) / _yieldIndex;
 
-        emit Withdrawal(_recipient, _nullifierHash);
+        // Withdraw from Aave and send to recipient
+        aavePool.withdraw(address(token), payout, _recipient);
+
+        emit Withdrawal(_recipient, _nullifierHash, payout);
     }
 }

@@ -10,6 +10,7 @@ function randomFieldElement(): Uint8Array {
 }
 
 export interface Commitment {
+  /** inner_commitment = Poseidon2(nullifier, secret) — contract wraps with yield index on-chain */
   commitment: Uint8Array
   nullifier: Uint8Array
   secret: Uint8Array
@@ -17,7 +18,6 @@ export interface Commitment {
 }
 
 export async function generateCommitment(): Promise<Commitment> {
-  
   const bb = await getBarretenberg()
   const nullifier = randomFieldElement()
   const secret = randomFieldElement()

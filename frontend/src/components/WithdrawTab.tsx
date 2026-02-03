@@ -1,8 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { OpenfortButton } from '@openfort/react'
 import { useWithdraw } from '../hooks/useWithdraw.ts'
 import { StatusIndicator } from './StatusIndicator.tsx'
+import { CrossChainSelector } from './CrossChainSelector.tsx'
+import { useLiFiQuote } from '../hooks/useLiFiQuote.ts'
+import { useLiFiBridge } from '../hooks/useLiFiBridge.ts'
+import { useEnsResolution } from '../hooks/useEnsResolution.ts'
+import { useEnsWithdrawPreferences } from '../hooks/useEnsWithdrawPreferences.ts'
+import { SUPPORTED_CHAINS, COMMON_TOKENS, type ChainConfig, type TokenConfig } from '../constants/chains.ts'
 import type { VaultConfig } from '../contracts/addresses.ts'
 
 const WITHDRAW_STEPS = [
@@ -12,14 +18,53 @@ const WITHDRAW_STEPS = [
   { key: 'submitting', label: 'Submitting transaction' },
 ]
 
+const BRIDGE_STEPS = [
+  { key: 'bridging', label: 'Signing bridge transaction' },
+  { key: 'polling', label: 'Waiting for bridge confirmation' },
+]
+
+const defaultChain = SUPPORTED_CHAINS.find((c) => c.chainId === 1) ?? SUPPORTED_CHAINS[0]
+const defaultToken = COMMON_TOKENS[defaultChain.chainId]?.find((t) => t.symbol === 'USDC') ?? COMMON_TOKENS[defaultChain.chainId]?.[0]
+
 export function WithdrawTab({ selectedVault }: { selectedVault: VaultConfig }) {
   const [noteInput, setNoteInput] = useState('')
   const [recipient, setRecipient] = useState('')
+  const [crossChainEnabled, setCrossChainEnabled] = useState(false)
+  const [selectedChain, setSelectedChain] = useState<ChainConfig>(defaultChain)
+  const [selectedToken, setSelectedToken] = useState<TokenConfig>(defaultToken)
   const { address, isConnected } = useAccount()
   const { step, txHash, error, withdraw, reset } = useWithdraw()
+  const { step: bridgeStep, txHash: bridgeTxHash, error: bridgeError, bridge, reset: bridgeReset } = useLiFiBridge()
+
+  // ENS resolution
+  const { resolvedAddress, ensName, isResolving } = useEnsResolution(recipient)
+  const { preferences, isLoading: isLoadingPrefs } = useEnsWithdrawPreferences(ensName)
+
+  // Auto-populate cross-chain settings from ENS text records
+  useEffect(() => {
+    if (preferences.chain) {
+      setCrossChainEnabled(true)
+      setSelectedChain(preferences.chain)
+      if (preferences.token) {
+        setSelectedToken(preferences.token)
+      }
+    }
+  }, [preferences])
+
+  // Use resolved address for the actual withdrawal
+  const effectiveRecipient = resolvedAddress || recipient
+
+  const { quote, isLoading: isLoadingQuote, error: quoteError } = useLiFiQuote({
+    fromAmount: selectedVault.denomination.toString(),
+    fromAddress: address || '',
+    toChainId: selectedChain.chainId,
+    toTokenAddress: selectedToken.address,
+    enabled: crossChainEnabled && isConnected && !!address,
+  })
 
   const isActive =
     step !== 'idle' && step !== 'done' && step !== 'error'
+  const isBridging = bridgeStep !== 'idle' && bridgeStep !== 'complete' && bridgeStep !== 'error'
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -33,8 +78,8 @@ export function WithdrawTab({ selectedVault }: { selectedVault: VaultConfig }) {
   }
 
   const handleWithdraw = () => {
-    if (!noteInput.trim() || !recipient.trim()) return
-    withdraw(noteInput.trim(), recipient.trim())
+    if (!noteInput.trim() || !effectiveRecipient.trim()) return
+    withdraw(noteInput.trim(), effectiveRecipient.trim())
   }
 
   return (
@@ -76,7 +121,7 @@ export function WithdrawTab({ selectedVault }: { selectedVault: VaultConfig }) {
           <input
             value={recipient}
             onChange={(e) => setRecipient(e.target.value)}
-            placeholder="0x..."
+            placeholder="0x... or name.eth"
             disabled={isActive}
             className="flex-1 px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-xl text-sm font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500/60 transition-colors"
           />
@@ -90,16 +135,51 @@ export function WithdrawTab({ selectedVault }: { selectedVault: VaultConfig }) {
             </button>
           )}
         </div>
+        {/* ENS resolution feedback */}
+        {isResolving && (
+          <p className="text-xs text-zinc-500 flex items-center gap-1.5">
+            <span className="inline-block w-2.5 h-2.5 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
+            Resolving ENS name...
+          </p>
+        )}
+        {ensName && resolvedAddress && (
+          <div className="space-y-1">
+            <p className="text-xs text-violet-400">
+              {ensName} &rarr; <span className="font-mono text-zinc-300">{resolvedAddress.slice(0, 6)}...{resolvedAddress.slice(-4)}</span>
+            </p>
+            {isLoadingPrefs && (
+              <p className="text-xs text-zinc-500">Loading withdrawal preferences...</p>
+            )}
+            {preferences.chain && (
+              <p className="text-xs text-cyan-400">
+                Preferences loaded: {preferences.chain.shortName}{preferences.token ? ` / ${preferences.token.symbol}` : ''}
+              </p>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Cross-chain selector */}
+      <CrossChainSelector
+        enabled={crossChainEnabled}
+        onToggle={setCrossChainEnabled}
+        selectedChain={selectedChain}
+        onChainChange={setSelectedChain}
+        selectedToken={selectedToken}
+        onTokenChange={setSelectedToken}
+        quote={quote}
+        isLoadingQuote={isLoadingQuote}
+        quoteError={quoteError}
+      />
 
       {/* Action button */}
       {isConnected ? (
         <button
           onClick={handleWithdraw}
-          disabled={isActive || !noteInput.trim() || !recipient.trim()}
+          disabled={isActive || isBridging || !noteInput.trim() || !effectiveRecipient.trim()}
           className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-violet-500 to-cyan-400 text-white font-semibold hover:shadow-lg hover:shadow-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
-          {isActive ? 'Processing...' : `Withdraw ${selectedVault.label}`}
+          {isActive ? 'Processing...' : isBridging ? 'Bridging...' : `Withdraw ${selectedVault.label}`}
         </button>
       ) : (
         <div className="space-y-2">
@@ -107,7 +187,7 @@ export function WithdrawTab({ selectedVault }: { selectedVault: VaultConfig }) {
         </div>
       )}
 
-      {/* Progress */}
+      {/* Withdraw progress */}
       {step !== 'idle' && (
         <StatusIndicator
           steps={WITHDRAW_STEPS}
@@ -116,22 +196,61 @@ export function WithdrawTab({ selectedVault }: { selectedVault: VaultConfig }) {
         />
       )}
 
+      {/* Bridge progress (step 2 of cross-chain) */}
+      {bridgeStep !== 'idle' && (
+        <StatusIndicator
+          steps={BRIDGE_STEPS}
+          currentStep={bridgeStep}
+          error={bridgeError}
+        />
+      )}
+
       {/* Error retry */}
-      {step === 'error' && (
+      {(step === 'error' || bridgeStep === 'error') && (
         <button
-          onClick={reset}
+          onClick={() => { reset(); bridgeReset(); }}
           className="w-full py-2.5 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium border border-zinc-700 transition-colors"
         >
           Try again
         </button>
       )}
 
-      {/* Success */}
-      {step === 'done' && txHash && (
+      {/* Success — base chain withdraw done */}
+      {step === 'done' && txHash && bridgeStep === 'idle' && !crossChainEnabled && (
         <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-4 text-green-300 text-sm">
           Withdrawal successful!{' '}
           <a
             href={`https://sepolia.basescan.org/tx/${txHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-green-400 hover:underline font-medium"
+          >
+            View transaction
+          </a>
+        </div>
+      )}
+
+      {/* Success — withdraw done, trigger bridge */}
+      {step === 'done' && txHash && crossChainEnabled && bridgeStep === 'idle' && quote && (
+        <div className="space-y-3">
+          <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-4 text-green-300 text-sm">
+            Step 1 complete — USDC withdrawn to your wallet on Base.
+          </div>
+          <button
+            onClick={() => bridge(quote)}
+            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold hover:shadow-lg hover:shadow-cyan-500/20 transition-all"
+          >
+            Bridge to {selectedChain.name}
+          </button>
+        </div>
+      )}
+
+      {/* Bridge complete */}
+      {bridgeStep === 'complete' && bridgeTxHash && (
+        <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-4 text-green-300 text-sm">
+          Bridge complete! Funds sent to {selectedChain.name}.{' '}
+          <a
+            href={`${selectedChain.explorerUrl}/tx/${bridgeTxHash}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-green-400 hover:underline font-medium"

@@ -25,10 +25,18 @@ const PRIVACY_VAULT_ABI = [
             { name: "_root", type: "bytes32" },
             { name: "_nullifierHash", type: "bytes32" },
             { name: "_recipient", type: "address" },
+            { name: "_yieldIndex", type: "uint256" },
         ],
         name: "withdraw",
         outputs: [],
         stateMutability: "nonpayable",
+        type: "function",
+    },
+    {
+        inputs: [],
+        name: "getCurrentBucketedYieldIndex",
+        outputs: [{ name: "", type: "uint256" }],
+        stateMutability: "view",
         type: "function",
     },
 ] as const;
@@ -59,6 +67,7 @@ export interface VaultWithdrawRequest {
     root: string; // bytes32 hex string
     nullifierHash: string; // bytes32 hex string
     recipient: string; // address
+    yieldIndex: string; // uint256 as hex or decimal string
 }
 
 /**
@@ -196,6 +205,7 @@ export async function relayVaultWithdraw(
             request.root as `0x${string}`,
             request.nullifierHash as `0x${string}`,
             request.recipient as Address,
+            BigInt(request.yieldIndex),
         ]);
 
         const publicClient = createPublicClient({
@@ -238,7 +248,7 @@ export async function getCommitments(
         });
 
         const eventAbi = parseAbiItem(
-            "event DepositWithAuthorization(bytes32 indexed commitment, uint32 leafIndex, uint256 timestamp)",
+            "event DepositWithAuthorization(bytes32 indexed commitment, uint32 leafIndex, uint256 timestamp, uint256 yieldIndex)",
         );
         const currentBlock = await publicClient.getBlockNumber();
         let allLogs: Log[] = [];
@@ -276,7 +286,7 @@ export async function getCommitments(
             }
         }
 
-        type DepositLog = Log & { args: { commitment: string; leafIndex: number; timestamp: bigint } };
+        type DepositLog = Log & { args: { commitment: string; leafIndex: number; timestamp: bigint; yieldIndex: bigint } };
         const sorted = (allLogs as DepositLog[]).sort((a, b) => a.args.leafIndex - b.args.leafIndex);
         const commitments = sorted.map((log) => log.args.commitment);
 
@@ -285,6 +295,37 @@ export async function getCommitments(
         console.error("Error fetching commitments:", error instanceof Error ? error.message : "Unknown error");
         return {
             commitments: [],
+            error: error instanceof Error ? error.message : "Unknown error",
+        };
+    }
+}
+
+/**
+ * Reads the current bucketed yield index from the vault contract
+ */
+export async function getCurrentYieldIndex(
+    vaultConfig: Config["vault"],
+): Promise<{ yieldIndex: string; error?: string }> {
+    try {
+        const chain = vaultConfig.chainId === 8453 ? base : baseSepolia;
+        const rpcUrl = getRpcUrl(vaultConfig.chainId);
+
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(rpcUrl),
+        });
+
+        const yieldIndex = await publicClient.readContract({
+            address: vaultConfig.vaultAddress as Address,
+            abi: PRIVACY_VAULT_ABI,
+            functionName: "getCurrentBucketedYieldIndex",
+        });
+
+        return { yieldIndex: yieldIndex.toString() };
+    } catch (error) {
+        console.error("Error fetching yield index:", error instanceof Error ? error.message : "Unknown error");
+        return {
+            yieldIndex: "0",
             error: error instanceof Error ? error.message : "Unknown error",
         };
     }

@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import type { Openfort } from "@openfort/openfort-node";
 import type { Config } from "./config.js";
 import { decodePaymentHeader, createPaymentRequiredResponse } from "./payment.js";
-import { relayVaultDeposit, relayVaultWithdraw, getCommitments, type VaultDepositRequest, type VaultWithdrawRequest } from "./vault.js";
+import { relayVaultDeposit, relayVaultWithdraw, getCommitments, getCurrentYieldIndex, type VaultDepositRequest, type VaultWithdrawRequest } from "./vault.js";
 
 export async function handleHealth(_req: Request, res: Response): Promise<void> {
   res.status(200).json({
@@ -183,9 +183,9 @@ export async function handleVaultWithdraw(
   try {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
 
-    if (!body.proof || !body.root || !body.nullifierHash || !body.recipient) {
+    if (!body.proof || !body.root || !body.nullifierHash || !body.recipient || !body.yieldIndex) {
       res.status(400).json({
-        error: "Missing required fields: proof, root, nullifierHash, recipient",
+        error: "Missing required fields: proof, root, nullifierHash, recipient, yieldIndex",
       });
       return;
     }
@@ -215,6 +215,7 @@ export async function handleVaultWithdraw(
       root: body.root,
       nullifierHash: body.nullifierHash,
       recipient: body.recipient,
+      yieldIndex: body.yieldIndex,
     };
 
     const result = await relayVaultWithdraw(request, vaultConfig);
@@ -259,6 +260,31 @@ export async function handleVaultCommitments(
     res.status(200).json({ commitments: result.commitments });
   } catch (error) {
     console.error("Vault commitments error:", error instanceof Error ? error.message : "Unknown error");
+    res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+}
+
+/**
+ * Returns the current bucketed yield index from the vault contract
+ */
+export async function handleYieldIndex(
+  _req: Request,
+  res: Response,
+  vaultConfig: Config["vault"]
+): Promise<void> {
+  try {
+    const result = await getCurrentYieldIndex(vaultConfig);
+
+    if (result.error) {
+      res.status(500).json({ error: result.error });
+      return;
+    }
+
+    res.status(200).json({ yieldIndex: result.yieldIndex });
+  } catch (error) {
+    console.error("Yield index error:", error instanceof Error ? error.message : "Unknown error");
     res.status(500).json({
       error: "Internal server error",
     });
