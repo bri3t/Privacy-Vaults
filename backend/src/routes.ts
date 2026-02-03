@@ -45,10 +45,9 @@ export async function handleShieldSession(
     );
     res.status(200).json({ session: sessionId });
   } catch (error) {
-    console.error("Shield session error:", error);
+    console.error("Shield session error:", error instanceof Error ? error.message : "Unknown error");
     res.status(500).json({
       error: "Failed to create encryption session",
-      details: error instanceof Error ? error.message : "Unknown error",
     });
   }
 }
@@ -67,7 +66,6 @@ export async function handleProtectedContent(
   }
 
   if (transactionHash) {
-    console.log("Transaction hash received:", transactionHash);
     res.status(200).json({
       success: true,
       message: "Payment accepted via on-chain transaction! Here's your protected content.",
@@ -82,8 +80,7 @@ export async function handleProtectedContent(
   }
 
   try {
-    const paymentData = decodePaymentHeader(paymentHeader!);
-    console.log("Payment received:", paymentData);
+    decodePaymentHeader(paymentHeader!);
     res.status(200).json({
       success: true,
       message: "Payment accepted! Here's your protected content.",
@@ -94,7 +91,7 @@ export async function handleProtectedContent(
       },
     });
   } catch (error) {
-    console.error("Payment validation error:", error);
+    console.error("Payment validation error:", error instanceof Error ? error.message : "Unknown error");
     res.status(402).json({
       error: "Invalid payment",
       x402Version: 1,
@@ -124,7 +121,6 @@ export async function handleVaultDeposit(
     if (!body.commitment || !body.encodedAuth) {
       res.status(400).json({
         error: "Missing required fields: commitment, encodedAuth",
-        receivedKeys: Object.keys(parsedBody ?? {}),
       });
       return;
     }
@@ -146,13 +142,18 @@ export async function handleVaultDeposit(
       return;
     }
 
+    // Validate encodedAuth length (EIP-3009 auth is ~580 hex chars, cap at 2000)
+    if (body.encodedAuth.length > 2000) {
+      res.status(400).json({ error: "encodedAuth exceeds maximum length" });
+      return;
+    }
+
     // Execute relayer
     const result = await relayVaultDeposit(body, vaultConfig);
 
     if (!result.success) {
       res.status(500).json({
         error: "Failed to relay vault deposit",
-        details: result.error,
       });
       return;
     }
@@ -164,10 +165,9 @@ export async function handleVaultDeposit(
       blockNumber: result.blockNumber,
     });
   } catch (error) {
-    console.error("Vault deposit error:", error);
+    console.error("Vault deposit error:", error instanceof Error ? error.message : "Unknown error");
     res.status(500).json({
       error: "Internal server error",
-      details: error instanceof Error ? error.message : "Unknown error",
     });
   }
 }
@@ -196,6 +196,20 @@ export async function handleVaultWithdraw(
       return;
     }
 
+    // Validate field lengths
+    if (body.proof.length > 100_000) {
+      res.status(400).json({ error: "proof exceeds maximum length" });
+      return;
+    }
+    if (body.root.length !== 66 || body.nullifierHash.length !== 66) {
+      res.status(400).json({ error: "root and nullifierHash must be bytes32" });
+      return;
+    }
+    if (body.recipient.length !== 42 || !hexPattern.test(body.recipient)) {
+      res.status(400).json({ error: "recipient must be a valid address" });
+      return;
+    }
+
     const request: VaultWithdrawRequest = {
       proof: body.proof,
       root: body.root,
@@ -208,7 +222,6 @@ export async function handleVaultWithdraw(
     if (!result.success) {
       res.status(500).json({
         error: "Failed to relay vault withdrawal",
-        details: result.error,
       });
       return;
     }
@@ -220,10 +233,9 @@ export async function handleVaultWithdraw(
       blockNumber: result.blockNumber,
     });
   } catch (error) {
-    console.error("Vault withdrawal error:", error);
+    console.error("Vault withdrawal error:", error instanceof Error ? error.message : "Unknown error");
     res.status(500).json({
       error: "Internal server error",
-      details: error instanceof Error ? error.message : "Unknown error",
     });
   }
 }
@@ -246,10 +258,9 @@ export async function handleVaultCommitments(
 
     res.status(200).json({ commitments: result.commitments });
   } catch (error) {
-    console.error("Vault commitments error:", error);
+    console.error("Vault commitments error:", error instanceof Error ? error.message : "Unknown error");
     res.status(500).json({
       error: "Internal server error",
-      details: error instanceof Error ? error.message : "Unknown error",
     });
   }
 }

@@ -1,4 +1,5 @@
 import express from "express";
+import type { Request, Response, NextFunction } from "express";
 import { config } from "dotenv";
 import { loadConfig } from "./config.js";
 import { createOpenfortClient } from "./openfort.js";
@@ -12,50 +13,94 @@ const openfortClient = createOpenfortClient(env.openfort.secretKey);
 
 const app = express();
 
-// Middleware
-app.use(express.json());
+// ------- Rate Limiting (in-memory, per-IP) -------
+interface RateLimitEntry {
+  count: number;
+  resetAt: number;
+}
 
-// CORS middleware
-app.use((req, res, next) => {
-  const origin = env.allowedOrigins[0] || "*";
-  res.setHeader("Access-Control-Allow-Origin", origin);
+const rateLimitStore = new Map<string, RateLimitEntry>();
+
+// Clean up expired entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitStore) {
+    if (entry.resetAt <= now) rateLimitStore.delete(key);
+  }
+}, 5 * 60 * 1000);
+
+function rateLimit(maxRequests: number, windowMs: number) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    const key = `${ip}:${req.path}`;
+    const now = Date.now();
+
+    const entry = rateLimitStore.get(key);
+    if (!entry || entry.resetAt <= now) {
+      rateLimitStore.set(key, { count: 1, resetAt: now + windowMs });
+      next();
+      return;
+    }
+
+    if (entry.count >= maxRequests) {
+      res.status(429).json({ error: "Too many requests, try again later" });
+      return;
+    }
+
+    entry.count++;
+    next();
+  };
+}
+
+// ------- Middleware -------
+app.use(express.json({ limit: "1mb" }));
+
+// CORS middleware — check request Origin against allowed list
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const allowedOrigins = env.allowedOrigins.length > 0
+    ? env.allowedOrigins
+    : ["http://localhost:5173"];
+
+  const requestOrigin = req.headers.origin;
+  if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
+    res.setHeader("Access-Control-Allow-Origin", requestOrigin);
+  }
+
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-PAYMENT, X-TRANSACTION-HASH");
   res.setHeader("Access-Control-Expose-Headers", "X-PAYMENT-RESPONSE");
 
   if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
+    res.sendStatus(204);
+    return;
   }
   next();
 });
 
-// Routes
+// ------- Routes -------
 app.get("/api/health", handleHealth);
-app.post("/api/protected-create-encryption-session", (req, res) => handleShieldSession(req, res, openfortClient, env.openfort.shield));
-app.all("/api/protected-content", (req, res) => handleProtectedContent(req, res, env.paywall));
-app.post("/api/vault/deposit", (req, res) => handleVaultDeposit(req, res, env.vault));
-app.post("/api/vault/withdraw", (req, res) => handleVaultWithdraw(req, res, env.vault));
-app.get("/api/vault/commitments", (_req, res) => handleVaultCommitments(_req, res, env.vault));
+app.post("/api/protected-create-encryption-session", rateLimit(10, 60_000), (req, res) => handleShieldSession(req, res, openfortClient, env.openfort.shield));
+app.all("/api/protected-content", rateLimit(30, 60_000), (req, res) => handleProtectedContent(req, res, env.paywall));
+app.post("/api/vault/deposit", rateLimit(5, 60_000), (req, res) => handleVaultDeposit(req, res, env.vault));
+app.post("/api/vault/withdraw", rateLimit(5, 60_000), (req, res) => handleVaultWithdraw(req, res, env.vault));
+app.get("/api/vault/commitments", rateLimit(20, 60_000), (_req, res) => handleVaultCommitments(_req, res, env.vault));
 
 // 404 handler
-app.use((_req, res) => {
+app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: "Not Found" });
 });
 
 // Error handler
-app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error("Server error:", err);
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error("Server error:", err.message);
   res.status(500).json({ error: "Internal Server Error" });
 });
 
 console.log(`
-🚀 x402 Demo Server
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🌐 Running on: http://localhost:${env.port}
-🎯 Paying to: ${env.paywall.payToAddress}
-🔗 Network: ${env.paywall.payment.network}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Privacy Vault Server
+  Running on: http://localhost:${env.port}
+  Network: ${env.paywall.payment.network}
 `);
 
 app.listen(env.port, () => {

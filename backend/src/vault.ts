@@ -148,7 +148,7 @@ export async function relayVaultDeposit(
             blockNumber: Number(receipt.blockNumber),
         };
     } catch (error) {
-        console.error("Error relaying vault deposit:", error);
+        console.error("Error relaying vault deposit:", error instanceof Error ? error.message : "Unknown error");
         return {
             success: false,
             transactionHash: "",
@@ -213,7 +213,7 @@ export async function relayVaultWithdraw(
             blockNumber: Number(receipt.blockNumber),
         };
     } catch (error) {
-        console.error("Error relaying vault withdrawal:", error);
+        console.error("Error relaying vault withdrawal:", error instanceof Error ? error.message : "Unknown error");
         return {
             success: false,
             transactionHash: "",
@@ -282,7 +282,7 @@ export async function getCommitments(
 
         return { commitments };
     } catch (error) {
-        console.error("Error fetching commitments:", error);
+        console.error("Error fetching commitments:", error instanceof Error ? error.message : "Unknown error");
         return {
             commitments: [],
             error: error instanceof Error ? error.message : "Unknown error",
