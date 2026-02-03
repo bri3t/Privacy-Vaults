@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import type { Openfort } from "@openfort/openfort-node";
 import type { Config } from "./config.js";
 import { decodePaymentHeader, createPaymentRequiredResponse } from "./payment.js";
-import { relayVaultDeposit, relayVaultWithdraw, type VaultDepositRequest, type VaultWithdrawRequest } from "./vault.js";
+import { relayVaultDeposit, relayVaultWithdraw, getCommitments, type VaultDepositRequest, type VaultWithdrawRequest } from "./vault.js";
 
 export async function handleHealth(_req: Request, res: Response): Promise<void> {
   res.status(200).json({
@@ -221,6 +221,32 @@ export async function handleVaultWithdraw(
     });
   } catch (error) {
     console.error("Vault withdrawal error:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      details: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+}
+
+/**
+ * Returns all deposit commitments sorted by leafIndex
+ */
+export async function handleVaultCommitments(
+  _req: Request,
+  res: Response,
+  vaultConfig: Config["vault"]
+): Promise<void> {
+  try {
+    const result = await getCommitments(vaultConfig);
+
+    if (result.error) {
+      res.status(500).json({ error: result.error });
+      return;
+    }
+
+    res.status(200).json({ commitments: result.commitments });
+  } catch (error) {
+    console.error("Vault commitments error:", error);
     res.status(500).json({
       error: "Internal server error",
       details: error instanceof Error ? error.message : "Unknown error",

@@ -1,7 +1,9 @@
-import { createPublicClient, createWalletClient, http, getContract, type Address } from "viem";
+import { createPublicClient, createWalletClient, http, getContract, type Address, type Log, parseAbiItem } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base, baseSepolia } from "viem/chains";
 import type { Config } from "./config.js";
+
+const DEPLOY_BLOCK = 37139811n;
 
 /**
  * PrivacyVault contract ABI (matching on-chain contract)
@@ -70,15 +72,17 @@ export interface VaultWithdrawResponse {
 }
 
 /**
- * Gets RPC URL for chain
+ * Gets RPC URL for chain (prefers RPC_URL env var)
  */
 function getRpcUrl(chainId: number): string {
-    // You can configure per-chain RPC URLs here
+    if (process.env.RPC_URL) {
+        return process.env.RPC_URL;
+    }
     if (chainId === 8453) {
         return "https://mainnet.base.org";
     }
     if (chainId === 84532) {
-        return "https://sepolia.base.org";
+        return "https://base-sepolia-rpc.publicnode.com";
     }
     throw new Error(`Unsupported chain ID: ${chainId}`);
 }
@@ -213,6 +217,74 @@ export async function relayVaultWithdraw(
         return {
             success: false,
             transactionHash: "",
+            error: error instanceof Error ? error.message : "Unknown error",
+        };
+    }
+}
+
+/**
+ * Fetches all deposit commitments from the vault contract events
+ */
+export async function getCommitments(
+    vaultConfig: Config["vault"],
+): Promise<{ commitments: string[]; error?: string }> {
+    try {
+        const chain = vaultConfig.chainId === 8453 ? base : baseSepolia;
+        const rpcUrl = getRpcUrl(vaultConfig.chainId);
+
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(rpcUrl),
+        });
+
+        const eventAbi = parseAbiItem(
+            "event DepositWithAuthorization(bytes32 indexed commitment, uint32 leafIndex, uint256 timestamp)",
+        );
+        const currentBlock = await publicClient.getBlockNumber();
+        let allLogs: Log[] = [];
+
+        // Try single request first (works when result set is small)
+        try {
+            allLogs = await publicClient.getLogs({
+                address: vaultConfig.vaultAddress as Address,
+                event: eventAbi,
+                fromBlock: DEPLOY_BLOCK,
+                toBlock: currentBlock,
+            });
+        } catch {
+            // Fall back to chunked requests if RPC rejects large range
+            const totalBlocks = currentBlock - DEPLOY_BLOCK;
+            const chunkSize = totalBlocks < 100n ? 10n : totalBlocks < 10_000n ? 1_000n : 10_000n;
+
+            for (let from = DEPLOY_BLOCK; from <= currentBlock; from += chunkSize) {
+                const to = from + chunkSize - 1n > currentBlock ? currentBlock : from + chunkSize - 1n;
+                for (let attempt = 0; attempt < 3; attempt++) {
+                    try {
+                        const logs = await publicClient.getLogs({
+                            address: vaultConfig.vaultAddress as Address,
+                            event: eventAbi,
+                            fromBlock: from,
+                            toBlock: to,
+                        });
+                        allLogs.push(...logs);
+                        break;
+                    } catch (e) {
+                        if (attempt === 2) throw e;
+                        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+                    }
+                }
+            }
+        }
+
+        type DepositLog = Log & { args: { commitment: string; leafIndex: number; timestamp: bigint } };
+        const sorted = (allLogs as DepositLog[]).sort((a, b) => a.args.leafIndex - b.args.leafIndex);
+        const commitments = sorted.map((log) => log.args.commitment);
+
+        return { commitments };
+    } catch (error) {
+        console.error("Error fetching commitments:", error);
+        return {
+            commitments: [],
             error: error instanceof Error ? error.message : "Unknown error",
         };
     }

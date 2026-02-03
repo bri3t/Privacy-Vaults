@@ -1,12 +1,11 @@
 import { useState, useCallback } from 'react'
-import { useWriteContract, usePublicClient } from 'wagmi'
-import type { Hex, Address, Log } from 'viem'
+import type { Hex } from 'viem'
 import { decodeNote } from '../zk/note.ts'
 import { bytesToHex } from '../zk/utils.ts'
 import { buildMerkleTree } from '../zk/merkleTree.ts'
 import { generateWithdrawProof, computeNullifierHash } from '../zk/proof.ts'
-import { vaultAbi } from '../contracts/abis.ts'
-import { VAULT_ADDRESS, DEPLOY_BLOCK } from '../contracts/addresses.ts'
+
+const RELAYER_URL = import.meta.env.VITE_RELAYER_URL || 'http://localhost:3007'
 
 export type WithdrawStep =
   | 'idle'
@@ -30,65 +29,27 @@ export function useWithdraw() {
     error: null,
   })
 
-  const publicClient = usePublicClient()
-  const { writeContractAsync } = useWriteContract()
-
   const withdraw = useCallback(
     async (noteHex: string, recipient: string) => {
-      if (!publicClient) {
-        setState((s) => ({
-          ...s,
-          step: 'error',
-          error: 'No public client',
-        }))
-        return
-      }
-
       try {
         // Step 1: Decode note
         const { nullifier, secret, commitment } = decodeNote(noteHex)
         const commitmentHex = bytesToHex(commitment)
 
-        // Step 2: Fetch DepositWithAuthorization events
+        // Step 2: Fetch commitments from backend
         setState({ step: 'fetching-events', txHash: null, error: null })
-        const currentBlock = await publicClient.getBlockNumber()
-        const allLogs: Log[] = []
-        const chunkSize = 10_000n
-
-        for (
-          let from = DEPLOY_BLOCK;
-          from <= currentBlock;
-          from += chunkSize
-        ) {
-          const to =
-            from + chunkSize - 1n > currentBlock
-              ? currentBlock
-              : from + chunkSize - 1n
-          const logs = await publicClient.getLogs({
-            address: VAULT_ADDRESS,
-            event: {
-              type: 'event',
-              name: 'DepositWithAuthorization',
-              inputs: [
-                { name: 'commitment', type: 'bytes32', indexed: true },
-                { name: 'leafIndex', type: 'uint32', indexed: false },
-                { name: 'timestamp', type: 'uint256', indexed: false },
-              ],
-            },
-            fromBlock: from,
-            toBlock: to,
-          })
-          allLogs.push(...logs)
-        }
-
-        // Sort by leafIndex to ensure correct ordering
-        type DepositLog = Log & {
-          args: { commitment: Hex; leafIndex: number; timestamp: bigint }
-        }
-        const sortedLogs = (allLogs as DepositLog[]).sort(
-          (a, b) => a.args.leafIndex - b.args.leafIndex,
+        const commitmentsRes = await fetch(
+          `${RELAYER_URL}/api/vault/commitments`,
         )
-        const leaves = sortedLogs.map((log) => log.args.commitment as string)
+        if (!commitmentsRes.ok) {
+          const err = await commitmentsRes
+            .json()
+            .catch(() => ({ error: 'Failed to fetch commitments' }))
+          throw new Error(err.error || 'Failed to fetch commitments')
+        }
+        const { commitments: leaves } = (await commitmentsRes.json()) as {
+          commitments: string[]
+        }
 
         // Step 3: Build merkle tree
         setState((s) => ({ ...s, step: 'building-tree' }))
@@ -117,32 +78,37 @@ export function useWithdraw() {
           merkleProof.pathIndices,
         )
 
-        // Step 5: Submit transaction
+        // Step 5: Submit transaction via relayer
         setState((s) => ({ ...s, step: 'submitting' }))
         const proofHex = ('0x' +
           Array.from(proof)
             .map((b) => b.toString(16).padStart(2, '0'))
             .join('')) as Hex
 
-        const txHash = await writeContractAsync({
-          address: VAULT_ADDRESS,
-          abi: vaultAbi,
-          functionName: 'withdraw',
-          args: [
-            proofHex,
-            root as Hex,
-            nullifierHash as Hex,
-            recipient as Address,
-          ],
+        const res = await fetch(`${RELAYER_URL}/api/vault/withdraw`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            proof: proofHex,
+            root: root as Hex,
+            nullifierHash: nullifierHash as Hex,
+            recipient,
+          }),
         })
 
-        setState({ step: 'done', txHash, error: null })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Relay failed' }))
+          throw new Error(err.error || err.details || 'Relay request failed')
+        }
+
+        const { transactionHash } = await res.json()
+        setState({ step: 'done', txHash: transactionHash, error: null })
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error'
         setState((s) => ({ ...s, step: 'error', error: message }))
       }
     },
-    [publicClient, writeContractAsync],
+    [],
   )
 
   const reset = useCallback(() => {
