@@ -119,6 +119,7 @@ export function useDeposit({ address, isConnected, vaultAddress, denomination, n
         body: JSON.stringify({
           commitment: commitment.commitmentHex,
           encodedAuth,
+          vaultAddress,
         }),
       })
 

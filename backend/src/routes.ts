@@ -4,6 +4,12 @@ import type { Config } from "./config.js";
 import { decodePaymentHeader, createPaymentRequiredResponse } from "./payment.js";
 import { relayVaultDeposit, relayVaultWithdraw, getCommitments, getCurrentYieldIndex, type VaultDepositRequest, type VaultWithdrawRequest } from "./vault.js";
 
+const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
+
+function isValidAddress(value: unknown): value is string {
+  return typeof value === "string" && ADDRESS_PATTERN.test(value);
+}
+
 export async function handleHealth(_req: Request, res: Response): Promise<void> {
   res.status(200).json({
     status: "ok",
@@ -112,9 +118,16 @@ export async function handleVaultDeposit(
 ): Promise<void> {
   try {
     const parsedBody = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+
+    if (!isValidAddress(parsedBody?.vaultAddress)) {
+      res.status(400).json({ error: "Missing or invalid vaultAddress" });
+      return;
+    }
+
     const body: VaultDepositRequest = {
       commitment: parsedBody?.commitment,
       encodedAuth: parsedBody?.encodedAuth,
+      vaultAddress: parsedBody.vaultAddress,
     };
 
     // Validate required fields
@@ -183,6 +196,11 @@ export async function handleVaultWithdraw(
   try {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
 
+    if (!isValidAddress(body?.vaultAddress)) {
+      res.status(400).json({ error: "Missing or invalid vaultAddress" });
+      return;
+    }
+
     if (!body.proof || !body.root || !body.nullifierHash || !body.recipient || !body.yieldIndex) {
       res.status(400).json({
         error: "Missing required fields: proof, root, nullifierHash, recipient, yieldIndex",
@@ -216,6 +234,7 @@ export async function handleVaultWithdraw(
       nullifierHash: body.nullifierHash,
       recipient: body.recipient,
       yieldIndex: body.yieldIndex,
+      vaultAddress: body.vaultAddress,
     };
 
     const result = await relayVaultWithdraw(request, vaultConfig);
@@ -245,12 +264,18 @@ export async function handleVaultWithdraw(
  * Returns all deposit commitments sorted by leafIndex
  */
 export async function handleVaultCommitments(
-  _req: Request,
+  req: Request,
   res: Response,
   vaultConfig: Config["vault"]
 ): Promise<void> {
   try {
-    const result = await getCommitments(vaultConfig);
+    const vaultAddress = req.query.vaultAddress;
+    if (!isValidAddress(vaultAddress)) {
+      res.status(400).json({ error: "Missing or invalid vaultAddress query parameter" });
+      return;
+    }
+
+    const result = await getCommitments(vaultAddress, vaultConfig);
 
     if (result.error) {
       res.status(500).json({ error: result.error });
@@ -270,12 +295,18 @@ export async function handleVaultCommitments(
  * Returns the current bucketed yield index from the vault contract
  */
 export async function handleYieldIndex(
-  _req: Request,
+  req: Request,
   res: Response,
   vaultConfig: Config["vault"]
 ): Promise<void> {
   try {
-    const result = await getCurrentYieldIndex(vaultConfig);
+    const vaultAddress = req.query.vaultAddress;
+    if (!isValidAddress(vaultAddress)) {
+      res.status(400).json({ error: "Missing or invalid vaultAddress query parameter" });
+      return;
+    }
+
+    const result = await getCurrentYieldIndex(vaultAddress, vaultConfig);
 
     if (result.error) {
       res.status(500).json({ error: result.error });

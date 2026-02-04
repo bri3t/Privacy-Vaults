@@ -35,7 +35,7 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
   const [selectedChain, setSelectedChain] = useState<ChainConfig>(defaultChain)
   const [selectedToken, setSelectedToken] = useState<TokenConfig>(defaultToken)
   const { address, isConnected } = useAccount()
-  const { step, txHash, error, withdraw, reset } = useWithdraw()
+  const { step, txHash, error, withdraw, reset } = useWithdraw(selectedVault.address)
   const { step: bridgeStep, txHash: bridgeTxHash, error: bridgeError, bridge, reset: bridgeReset } = useLiFiBridge()
 
   // ENS resolution

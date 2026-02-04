@@ -19,7 +19,6 @@ interface PaywallConfig {
 }
 
 interface VaultConfig {
-  vaultAddress: string;
   usdcAddress: string;
   chainId: number;
   relayerPrivateKey: string;
@@ -77,7 +76,6 @@ export function loadConfig(): Config {
       },
     },
     vault: {
-      vaultAddress: process.env.VAULT_ADDRESS ?? "0x0000000000000000000000000000000000000000",
       usdcAddress: process.env.USDC_ADDRESS ?? "0x0000000000000000000000000000000000000000",
       chainId: toNumber(process.env.CHAIN_ID) ?? 84532,
       relayerPrivateKey: process.env.RELAYER_PRIVATE_KEY ?? "",

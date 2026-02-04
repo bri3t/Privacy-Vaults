@@ -5,7 +5,6 @@ import { bytesToHex } from '../zk/utils.ts'
 import { buildMerkleTree } from '../zk/merkleTree.ts'
 import { generateWithdrawProof, computeNullifierHash } from '../zk/proof.ts'
 import { getBarretenberg } from '../zk/barretenberg.ts'
-
 const RELAYER_URL = import.meta.env.VITE_RELAYER_URL || 'http://localhost:3007'
 
 export type WithdrawStep =
@@ -23,7 +22,7 @@ interface WithdrawState {
   error: string | null
 }
 
-export function useWithdraw() {
+export function useWithdraw(vaultAddress: string) {
   const [state, setState] = useState<WithdrawState>({
     step: 'idle',
     txHash: null,
@@ -45,7 +44,7 @@ export function useWithdraw() {
         // Step 2: Fetch commitments from backend
         setState({ step: 'fetching-events', txHash: null, error: null })
         const commitmentsRes = await fetch(
-          `${RELAYER_URL}/api/vault/commitments`,
+          `${RELAYER_URL}/api/vault/commitments?vaultAddress=${encodeURIComponent(vaultAddress)}`,
         )
         if (!commitmentsRes.ok) {
           const err = await commitmentsRes
@@ -64,7 +63,7 @@ export function useWithdraw() {
         const leafIndex = tree.getIndex(commitmentHex)
         if (leafIndex === -1) {
           throw new Error(
-            'Commitment not found in on-chain deposits. Is the note correct?',
+            'Commitment not found in the selected vault. Make sure you have selected the same vault denomination used during deposit.',
           )
         }
 
@@ -104,6 +103,7 @@ export function useWithdraw() {
             nullifierHash: nullifierHash as Hex,
             recipient,
             yieldIndex: yieldIndexDecimal,
+            vaultAddress,
           }),
         })
 
@@ -119,7 +119,7 @@ export function useWithdraw() {
         setState((s) => ({ ...s, step: 'error', error: message }))
       }
     },
-    [],
+    [vaultAddress],
   )
 
   const reset = useCallback(() => {

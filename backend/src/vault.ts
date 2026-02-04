@@ -3,7 +3,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { base, baseSepolia } from "viem/chains";
 import type { Config } from "./config.js";
 
-const DEPLOY_BLOCK = 37139811n;
+const DEPLOY_BLOCK = 37218921n;
 
 /**
  * PrivacyVault contract ABI (matching on-chain contract)
@@ -47,6 +47,7 @@ const PRIVACY_VAULT_ABI = [
 export interface VaultDepositRequest {
     commitment: string; // bytes32 hex string
     encodedAuth: string; // ABI-encoded receiveWithAuthorization params
+    vaultAddress: string; // vault contract address
 }
 
 /**
@@ -68,6 +69,7 @@ export interface VaultWithdrawRequest {
     nullifierHash: string; // bytes32 hex string
     recipient: string; // address
     yieldIndex: string; // uint256 as hex or decimal string
+    vaultAddress: string; // vault contract address
 }
 
 /**
@@ -128,7 +130,7 @@ export async function relayVaultDeposit(
 
         // Create vault contract instance
         const vaultContract = getContract({
-            address: vaultConfig.vaultAddress as Address,
+            address: request.vaultAddress as Address,
             abi: PRIVACY_VAULT_ABI,
             client: walletClient,
         });
@@ -195,7 +197,7 @@ export async function relayVaultWithdraw(
         });
 
         const vaultContract = getContract({
-            address: vaultConfig.vaultAddress as Address,
+            address: request.vaultAddress as Address,
             abi: PRIVACY_VAULT_ABI,
             client: walletClient,
         });
@@ -236,6 +238,7 @@ export async function relayVaultWithdraw(
  * Fetches all deposit commitments from the vault contract events
  */
 export async function getCommitments(
+    vaultAddress: string,
     vaultConfig: Config["vault"],
 ): Promise<{ commitments: string[]; error?: string }> {
     try {
@@ -251,17 +254,19 @@ export async function getCommitments(
             "event DepositWithAuthorization(bytes32 indexed commitment, uint32 leafIndex, uint256 timestamp, uint256 yieldIndex)",
         );
         const currentBlock = await publicClient.getBlockNumber();
+        console.log(`[getCommitments] vaultAddress=${vaultAddress}, fromBlock=${DEPLOY_BLOCK}, toBlock=${currentBlock}, range=${currentBlock - DEPLOY_BLOCK} blocks`);
         let allLogs: Log[] = [];
 
         // Try single request first (works when result set is small)
         try {
             allLogs = await publicClient.getLogs({
-                address: vaultConfig.vaultAddress as Address,
+                address: vaultAddress as Address,
                 event: eventAbi,
                 fromBlock: DEPLOY_BLOCK,
                 toBlock: currentBlock,
             });
-        } catch {
+        } catch (singleErr) {
+            console.log(`[getCommitments] single-request failed, falling back to chunked:`, singleErr instanceof Error ? singleErr.message : singleErr);
             // Fall back to chunked requests if RPC rejects large range
             const totalBlocks = currentBlock - DEPLOY_BLOCK;
             const chunkSize = totalBlocks < 100n ? 10n : totalBlocks < 10_000n ? 1_000n : 10_000n;
@@ -271,7 +276,7 @@ export async function getCommitments(
                 for (let attempt = 0; attempt < 3; attempt++) {
                     try {
                         const logs = await publicClient.getLogs({
-                            address: vaultConfig.vaultAddress as Address,
+                            address: vaultAddress as Address,
                             event: eventAbi,
                             fromBlock: from,
                             toBlock: to,
@@ -286,10 +291,16 @@ export async function getCommitments(
             }
         }
 
+        console.log(`[getCommitments] found ${allLogs.length} raw logs`);
+        if (allLogs.length > 0) {
+            console.log(`[getCommitments] first log block: ${allLogs[0].blockNumber}, topics:`, allLogs[0].topics);
+        }
+
         type DepositLog = Log & { args: { commitment: string; leafIndex: number; timestamp: bigint; yieldIndex: bigint } };
         const sorted = (allLogs as DepositLog[]).sort((a, b) => a.args.leafIndex - b.args.leafIndex);
         const commitments = sorted.map((log) => log.args.commitment);
 
+        console.log(`[getCommitments] returning ${commitments.length} commitments`);
         return { commitments };
     } catch (error) {
         console.error("Error fetching commitments:", error instanceof Error ? error.message : "Unknown error");
@@ -304,6 +315,7 @@ export async function getCommitments(
  * Reads the current bucketed yield index from the vault contract
  */
 export async function getCurrentYieldIndex(
+    vaultAddress: string,
     vaultConfig: Config["vault"],
 ): Promise<{ yieldIndex: string; error?: string }> {
     try {
@@ -316,7 +328,7 @@ export async function getCurrentYieldIndex(
         });
 
         const yieldIndex = await publicClient.readContract({
-            address: vaultConfig.vaultAddress as Address,
+            address: vaultAddress as Address,
             abi: PRIVACY_VAULT_ABI,
             functionName: "getCurrentBucketedYieldIndex",
         });

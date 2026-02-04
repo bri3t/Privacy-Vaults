@@ -135,7 +135,6 @@ contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard, Ownable {
             revert PrivacyVault__DepositValueMismatch({expected: DENOMINATION, actual: amount});
         }
         if (to != address(this)) revert PrivacyVault__InvalidRecipient({expected: address(this), actual: to});
-        if (from != msg.sender) revert PrivacyVault__InvalidSender({expected: msg.sender, actual: from});
 
         // Transfer USDC from depositor to vault via EIP-3009
         (bool success,) =
