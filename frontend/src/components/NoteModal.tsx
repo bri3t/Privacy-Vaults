@@ -35,7 +35,7 @@ export function NoteModal({ note, onClose }: NoteModalProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/60 backdrop-blur-md"
+          className="absolute inset-0 bg-[var(--backdrop)] backdrop-blur-md"
         />
 
         {/* Modal */}
@@ -44,16 +44,16 @@ export function NoteModal({ note, onClose }: NoteModalProps) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="relative bg-zinc-900/90 border border-white/10 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl shadow-violet-500/10"
+          className="relative bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl shadow-violet-500/10 backdrop-blur-xl"
         >
-          <h3 className="text-xl font-bold text-white">Deposit Successful</h3>
+          <h3 className="text-xl font-bold text-[var(--text-primary)]">Deposit Successful</h3>
 
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-[var(--text-tertiary)]">
             Your withdrawal note is below. This is the only way to recover your
             funds.
           </p>
 
-          <div className="bg-zinc-900/50 border border-zinc-700 rounded-xl p-4 font-mono text-xs text-violet-300 break-all select-all max-h-32 overflow-y-auto">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-primary)] rounded-xl p-4 font-mono text-xs text-violet-300 break-all select-all max-h-32 overflow-y-auto">
             {note}
           </div>
 
@@ -81,9 +81,9 @@ export function NoteModal({ note, onClose }: NoteModalProps) {
               type="checkbox"
               checked={backedUp}
               onChange={(e) => setBackedUp(e.target.checked)}
-              className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-violet-500 focus:ring-violet-500/50 accent-violet-500"
+              className="w-4 h-4 rounded border-[var(--border-primary)] bg-[var(--bg-input)] text-violet-500 focus:ring-violet-500/50 accent-violet-500"
             />
-            <span className="text-sm text-zinc-300">I have backed up my withdrawal note</span>
+            <span className="text-sm text-[var(--text-secondary)]">I have backed up my withdrawal note</span>
           </label>
 
           <button

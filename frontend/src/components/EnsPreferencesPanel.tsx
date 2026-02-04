@@ -63,21 +63,21 @@ export function EnsPreferencesPanel({ ensName, onClose }: EnsPreferencesPanelPro
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 max-w-sm w-full mx-4 space-y-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--backdrop)] backdrop-blur-sm">
+      <div className="bg-[var(--bg-card)] border border-[var(--border-primary)] rounded-2xl p-6 max-w-sm w-full mx-4 space-y-4 backdrop-blur-xl">
         <div className="flex items-center justify-between">
-          <h3 className="text-white font-semibold">ENS Withdrawal Preferences</h3>
-          <button onClick={onClose} className="text-zinc-500 hover:text-white text-xl">&times;</button>
+          <h3 className="text-[var(--text-primary)] font-semibold">ENS Withdrawal Preferences</h3>
+          <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl">&times;</button>
         </div>
 
-        <p className="text-xs text-zinc-400">
+        <p className="text-xs text-[var(--text-tertiary)]">
           Set your preferred withdrawal chain and token on <span className="text-violet-400">{ensName}</span>.
           Senders who withdraw to your ENS name will see these preferences auto-populated.
         </p>
 
         {/* Chain */}
         <div>
-          <label className="text-xs text-zinc-500 mb-1 block">Preferred chain</label>
+          <label className="text-xs text-[var(--text-muted)] mb-1 block">Preferred chain</label>
           <div className="flex flex-wrap gap-2">
             {SUPPORTED_CHAINS.map((chain) => (
               <button
@@ -89,8 +89,8 @@ export function EnsPreferencesPanel({ ensName, onClose }: EnsPreferencesPanelPro
                 }}
                 className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-all border ${
                   selectedChain.chainId === chain.chainId
-                    ? 'bg-violet-500/20 border-violet-500/50 text-white'
-                    : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-400 hover:border-zinc-600'
+                    ? 'bg-violet-500/20 border-violet-500/50 text-[var(--text-primary)]'
+                    : 'bg-[var(--bg-surface)] border-[var(--border-primary)] text-[var(--text-tertiary)] hover:border-[var(--text-muted)]'
                 }`}
               >
                 {chain.shortName}
@@ -101,7 +101,7 @@ export function EnsPreferencesPanel({ ensName, onClose }: EnsPreferencesPanelPro
 
         {/* Token */}
         <div>
-          <label className="text-xs text-zinc-500 mb-1 block">Preferred token</label>
+          <label className="text-xs text-[var(--text-muted)] mb-1 block">Preferred token</label>
           <div className="flex gap-2">
             {tokens.map((token) => (
               <button
@@ -109,8 +109,8 @@ export function EnsPreferencesPanel({ ensName, onClose }: EnsPreferencesPanelPro
                 onClick={() => setSelectedToken(token)}
                 className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all border ${
                   selectedToken.symbol === token.symbol
-                    ? 'bg-violet-500/20 border-violet-500/50 text-white'
-                    : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-400 hover:border-zinc-600'
+                    ? 'bg-violet-500/20 border-violet-500/50 text-[var(--text-primary)]'
+                    : 'bg-[var(--bg-surface)] border-[var(--border-primary)] text-[var(--text-tertiary)] hover:border-[var(--text-muted)]'
                 }`}
               >
                 {token.symbol}
@@ -119,7 +119,7 @@ export function EnsPreferencesPanel({ ensName, onClose }: EnsPreferencesPanelPro
           </div>
         </div>
 
-        <p className="text-[10px] text-zinc-600">
+        <p className="text-[10px] text-[var(--text-muted)]">
           This will write two text records to your ENS name on Ethereum mainnet. Requires a mainnet transaction.
         </p>
 

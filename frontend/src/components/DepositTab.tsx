@@ -53,17 +53,17 @@ export function DepositTab({ publicClient, isConnected, address, selectedVault, 
     <div className="flex flex-col flex-1">
       {/* Form fields */}
       <div className="space-y-5">
-        <p className="text-zinc-400 text-sm leading-relaxed">
-          Deposit <span className="text-white font-medium">{selectedVault.label}</span> into the Privacy Vault.
+        <p className="text-[var(--text-tertiary)] text-sm leading-relaxed">
+          Deposit <span className="text-[var(--text-primary)] font-medium">{selectedVault.label}</span> into the Privacy Vault.
           You will receive a secret note that can be used to withdraw later.
         </p>
 
         {/* Balance */}
         {isConnected && formattedBalance !== null && (
-          <div className="flex items-center justify-between text-xs text-zinc-500">
+          <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
             <div className="flex items-center gap-1.5">
               <img src="https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png" alt="USDC" className="w-4 h-4 rounded-full" />
-              Balance: <span className="text-zinc-300">{formattedBalance} USDC</span>
+              Balance: <span className="text-[var(--text-secondary)]">{formattedBalance} USDC</span>
             </div>
             {isTestnet && (
               <a
@@ -91,15 +91,15 @@ export function DepositTab({ publicClient, isConnected, address, selectedVault, 
                 className={`
                   flex-1 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all border
                   ${isSelected
-                    ? 'bg-gradient-to-r from-violet-500/20 to-cyan-400/20 border-violet-500/50 text-white shadow-sm shadow-violet-500/10'
+                    ? 'bg-gradient-to-r from-violet-500/20 to-cyan-400/20 border-violet-500/50 text-[var(--text-primary)] shadow-sm shadow-violet-500/10'
                     : isDisabled
-                      ? 'bg-zinc-800/30 border-zinc-800 text-zinc-600 cursor-not-allowed'
-                      : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-400 hover:border-zinc-600 hover:text-zinc-300'
+                      ? 'bg-[var(--bg-surface)] border-[var(--border-primary)] text-[var(--text-muted)] cursor-not-allowed'
+                      : 'bg-[var(--bg-surface)] border-[var(--border-primary)] text-[var(--text-tertiary)] hover:border-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                   }
                 `}
               >
                 {vault.displayAmount}
-                {isDisabled && <span className="block text-[10px] font-normal text-zinc-600">Soon</span>}
+                {isDisabled && <span className="block text-[10px] font-normal text-[var(--text-muted)]">Soon</span>}
               </button>
             )
           })}
@@ -146,7 +146,7 @@ export function DepositTab({ publicClient, isConnected, address, selectedVault, 
         {step === 'error' && (
           <button
             onClick={reset}
-            className="w-full py-2.5 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium border border-zinc-700 transition-colors"
+            className="w-full py-2.5 px-4 rounded-xl bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] text-sm font-medium border border-[var(--border-primary)] transition-colors"
           >
             Try again
           </button>
@@ -154,7 +154,7 @@ export function DepositTab({ publicClient, isConnected, address, selectedVault, 
 
         {/* Tx link */}
         {txHash && (
-          <div className="text-xs text-zinc-500">
+          <div className="text-xs text-[var(--text-muted)]">
             Tx:{' '}
             <a
               href={`${networkConfig.explorerBaseUrl}/tx/${txHash}`}

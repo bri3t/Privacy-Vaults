@@ -19,11 +19,11 @@ const fadeUp = {
 
 export function LandingPage({ onLaunch }: LandingPageProps) {
   return (
-    <div className="relative min-h-screen bg-zinc-950 text-white overflow-hidden">
+    <div className="relative min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] overflow-hidden">
       <AnimatedBackground />
 
       {/* Navbar */}
-      <nav className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-zinc-950/60 border-b border-white/[0.06]">
+      <nav className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl border-b border-[var(--border-subtle)]" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-page) 60%, transparent)' }}>
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <span className="text-lg font-bold bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
             Privacy Vault
@@ -48,9 +48,9 @@ export function LandingPage({ onLaunch }: LandingPageProps) {
           <h1 className="text-5xl sm:text-7xl font-bold tracking-tight leading-tight">
             <FlipWords words={['Private', 'Trustless', 'Gasless']} />
             <br />
-            <span className="text-white">USDC Transfers</span>
+            <span className="text-[var(--text-primary)]">USDC Transfers</span>
           </h1>
-          <p className="mt-6 text-lg sm:text-xl text-zinc-400 max-w-xl mx-auto">
+          <p className="mt-6 text-lg sm:text-xl text-[var(--text-tertiary)] max-w-xl mx-auto">
             Break the on-chain link between sender and receiver. Deposit and withdraw
             USDC with zero-knowledge proofs on Base.
           </p>
@@ -65,7 +65,7 @@ export function LandingPage({ onLaunch }: LandingPageProps) {
               href="https://github.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-8 py-3.5 rounded-xl border border-zinc-700 text-zinc-300 font-medium text-lg hover:border-zinc-500 hover:text-white transition-colors"
+              className="px-8 py-3.5 rounded-xl border border-[var(--border-primary)] text-[var(--text-secondary)] font-medium text-lg hover:border-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
             >
               Learn More
             </a>
@@ -90,13 +90,13 @@ export function LandingPage({ onLaunch }: LandingPageProps) {
 
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-white/[0.06] py-8">
+      <footer className="relative z-10 border-t border-[var(--border-subtle)] py-8">
         <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <span className="text-sm text-zinc-500">
+          <span className="text-sm text-[var(--text-muted)]">
             Privacy Vault — Open Source
           </span>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-zinc-600 px-3 py-1 rounded-full border border-zinc-800 bg-zinc-900/50">
+            <span className="text-xs text-[var(--text-muted)] px-3 py-1 rounded-full border border-[var(--border-primary)] bg-[var(--bg-surface)]">
               Built on Base
             </span>
           </div>

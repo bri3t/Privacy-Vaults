@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useNetworkMode } from '../contexts/NetworkModeContext.tsx'
+import { useTheme } from '../contexts/ThemeContext.tsx'
 
 interface SidebarMenuProps {
   open: boolean
@@ -8,6 +9,7 @@ interface SidebarMenuProps {
 
 export function SidebarMenu({ open, onClose }: SidebarMenuProps) {
   const { mode, isMainnet, toggleMode } = useNetworkMode()
+  const { isDark, toggleTheme } = useTheme()
 
   return (
     <AnimatePresence>
@@ -20,7 +22,7 @@ export function SidebarMenu({ open, onClose }: SidebarMenuProps) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-40 bg-[var(--backdrop)] backdrop-blur-sm"
           />
 
           {/* Panel */}
@@ -29,14 +31,14 @@ export function SidebarMenu({ open, onClose }: SidebarMenuProps) {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 26, stiffness: 300 }}
-            className="fixed right-0 top-0 bottom-0 z-50 w-72 bg-zinc-900 border-l border-zinc-800 flex flex-col"
+            className="fixed right-0 top-0 bottom-0 z-50 w-72 bg-[var(--bg-page)] border-l border-[var(--border-primary)] flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-zinc-800">
-              <h2 className="text-sm font-semibold text-white">Settings</h2>
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[var(--border-primary)]">
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">Settings</h2>
               <button
                 onClick={onClose}
-                className="text-zinc-400 hover:text-white transition-colors"
+                className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
               >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                   <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -54,13 +56,12 @@ export function SidebarMenu({ open, onClose }: SidebarMenuProps) {
                 onChange={toggleMode}
               />
 
-              {/* Dark mode (placeholder) */}
+              {/* Dark mode */}
               <ToggleRow
                 label="Dark Mode"
-                description="Always on"
-                checked={true}
-                onChange={() => {}}
-                disabled
+                description={isDark ? 'On' : 'Off'}
+                checked={isDark}
+                onChange={toggleTheme}
               />
 
               {/* Sound effects (placeholder) */}
@@ -107,14 +108,14 @@ function ToggleRow({
   return (
     <div className={`flex items-center justify-between ${disabled ? 'opacity-50' : ''}`}>
       <div>
-        <p className="text-sm text-white font-medium">{label}</p>
-        <p className="text-xs text-zinc-500">{description}</p>
+        <p className="text-sm text-[var(--text-primary)] font-medium">{label}</p>
+        <p className="text-xs text-[var(--text-muted)]">{description}</p>
       </div>
       <button
         onClick={onChange}
         disabled={disabled}
         className={`relative w-10 h-5.5 rounded-full transition-colors ${
-          checked ? 'bg-violet-500' : 'bg-zinc-700'
+          checked ? 'bg-violet-500' : 'bg-[var(--bg-hover)]'
         } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         style={{ height: '22px' }}
       >

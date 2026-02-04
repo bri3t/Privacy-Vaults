@@ -66,7 +66,7 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
     }, [isConnected, chainId, networkConfig.chainId, switchChainAsync])
 
     return (
-        <div className="relative min-h-screen bg-zinc-950">
+        <div className="relative min-h-screen bg-[var(--bg-page)]">
             <AnimatedBackground />
 
             {/* Top bar — full width, pinned to screen edges */}
@@ -90,7 +90,7 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
                     <OpenfortButton label={isAuthenticated ? undefined : 'Sign In'} />
                     <button
                         onClick={() => setSidebarOpen(true)}
-                        className="p-2 text-zinc-400 hover:text-white transition-colors"
+                        className="p-2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
                         aria-label="Open settings"
                     >
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -105,7 +105,7 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
                 <div className="relative z-10 max-w-lg mx-auto px-4 pb-4">
                     <div className="glass-card rounded-xl p-4 flex items-center gap-3">
                         <span className="inline-block w-4 h-4 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
-                        <p className="text-sm text-zinc-300">Setting up your wallet...</p>
+                        <p className="text-sm text-[var(--text-secondary)]">Setting up your wallet...</p>
                     </div>
                 </div>
             )}
@@ -122,8 +122,8 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
                                     key={t}
                                     onClick={() => setTab(t)}
                                     className={`flex-1 py-4 text-sm font-semibold transition-all relative ${tab === t
-                                        ? 'text-white'
-                                        : 'text-zinc-500 hover:text-zinc-300'
+                                        ? 'text-[var(--text-primary)]'
+                                        : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                                         }`}
                                 >
                                     {t.charAt(0).toUpperCase() + t.slice(1)}

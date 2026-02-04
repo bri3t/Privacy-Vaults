@@ -34,7 +34,7 @@ export function WithdrawSuccessModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/60 backdrop-blur-md"
+          className="absolute inset-0 bg-[var(--backdrop)] backdrop-blur-md"
           onClick={onClose}
         />
 
@@ -44,7 +44,7 @@ export function WithdrawSuccessModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="relative bg-zinc-900/90 border border-white/10 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl shadow-green-500/10"
+          className="relative bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl shadow-green-500/10 backdrop-blur-xl"
         >
           {/* Header */}
           <div className="flex items-center gap-3">
@@ -53,29 +53,29 @@ export function WithdrawSuccessModal({
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h3 className="text-xl font-bold text-white">Withdrawal Successful</h3>
+            <h3 className="text-xl font-bold text-[var(--text-primary)]">Withdrawal Successful</h3>
           </div>
 
           {/* Details */}
-          <div className="bg-zinc-900/50 border border-zinc-700 rounded-xl p-4 space-y-3">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-primary)] rounded-xl p-4 space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-zinc-400">Amount</span>
-              <span className="text-sm font-semibold text-white">{amount} {token}</span>
+              <span className="text-sm text-[var(--text-tertiary)]">Amount</span>
+              <span className="text-sm font-semibold text-[var(--text-primary)]">{amount} {token}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-zinc-400">Network</span>
-              <span className="text-sm font-medium text-white">{network}</span>
+              <span className="text-sm text-[var(--text-tertiary)]">Network</span>
+              <span className="text-sm font-medium text-[var(--text-primary)]">{network}</span>
             </div>
             <div className="flex justify-between items-start">
-              <span className="text-sm text-zinc-400">Recipient</span>
+              <span className="text-sm text-[var(--text-tertiary)]">Recipient</span>
               <div className="text-right">
                 {ensName ? (
                   <div className="space-y-0.5">
                     <span className="text-sm font-medium text-violet-400">{ensName}</span>
-                    <p className="text-xs font-mono text-zinc-400">{shortenAddress(recipient)}</p>
+                    <p className="text-xs font-mono text-[var(--text-tertiary)]">{shortenAddress(recipient)}</p>
                   </div>
                 ) : (
-                  <span className="text-sm font-mono text-white">{shortenAddress(recipient)}</span>
+                  <span className="text-sm font-mono text-[var(--text-primary)]">{shortenAddress(recipient)}</span>
                 )}
               </div>
             </div>
@@ -86,7 +86,7 @@ export function WithdrawSuccessModal({
             href={`${explorerUrl}/tx/${txHash}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-sm font-medium text-violet-400 hover:text-violet-300 transition-colors"
+            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] border border-[var(--border-primary)] text-sm font-medium text-violet-400 hover:text-violet-300 transition-colors"
           >
             View transaction
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

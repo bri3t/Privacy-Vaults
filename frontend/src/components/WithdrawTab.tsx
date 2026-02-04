@@ -109,19 +109,19 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
       <div className="space-y-3">
         <div className="space-y-1.5">
           <div className="flex items-center gap-1.5">
-            <label className="text-xs text-zinc-300 font-medium">Note</label>
+            <label className="text-xs text-[var(--text-secondary)] font-medium">Note</label>
             <div className="relative group">
               <svg
                 width="14"
                 height="14"
                 viewBox="0 0 16 16"
                 fill="none"
-                className="text-zinc-500 hover:text-zinc-300 transition-colors cursor-help"
+                className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors cursor-help"
               >
                 <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
                 <text x="8" y="12" textAnchor="middle" fill="currentColor" fontSize="10" fontWeight="600">i</text>
               </svg>
-              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs text-zinc-300 leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-20 shadow-lg">
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 px-3 py-2 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-primary)] text-xs text-[var(--text-secondary)] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-20 shadow-lg">
                 Paste your withdrawal note and specify the recipient address to withdraw {selectedVault.label} from the vault.
               </div>
             </div>
@@ -131,10 +131,10 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
             onChange={(e) => setNoteInput(e.target.value)}
             placeholder="0x..."
             disabled={isActive}
-            className="w-full px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-xs font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500/60 transition-colors"
+            className="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-primary)] rounded-lg text-xs font-mono text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-violet-500/60 transition-colors"
           />
           <label className="block">
-            <span className="text-[11px] text-zinc-500 cursor-pointer hover:text-violet-400 transition-colors">
+            <span className="text-[11px] text-[var(--text-muted)] cursor-pointer hover:text-violet-400 transition-colors">
               Or upload a .txt file
             </span>
             <input
@@ -148,20 +148,20 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs text-zinc-300 font-medium">Recipient</label>
+          <label className="text-xs text-[var(--text-secondary)] font-medium">Recipient</label>
           <div className="flex gap-2">
             <input
               value={recipient}
               onChange={(e) => setRecipient(e.target.value)}
               placeholder="0x... or name.eth"
               disabled={isActive}
-              className="flex-1 px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-xs font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500/60 transition-colors"
+              className="flex-1 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-primary)] rounded-lg text-xs font-mono text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-violet-500/60 transition-colors"
             />
             {address && (
               <button
                 onClick={() => setRecipient(address)}
                 disabled={isActive}
-                className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-zinc-300 rounded-lg text-xs font-medium whitespace-nowrap border border-zinc-700 transition-colors"
+                className="px-3 py-2 bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] disabled:opacity-50 text-[var(--text-secondary)] rounded-lg text-xs font-medium whitespace-nowrap border border-[var(--border-primary)] transition-colors"
               >
                 Me
               </button>
@@ -169,7 +169,7 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
           </div>
           {/* ENS resolution feedback */}
           {isResolving && (
-            <p className="text-xs text-zinc-500 flex items-center gap-1.5">
+            <p className="text-xs text-[var(--text-muted)] flex items-center gap-1.5">
               <span className="inline-block w-2.5 h-2.5 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
               Resolving ENS name...
             </p>
@@ -182,10 +182,10 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
           {ensName && resolvedAddress && (
             <div className="space-y-1">
               <p className="text-xs text-violet-400">
-                {ensName} &rarr; <span className="font-mono text-zinc-300">{resolvedAddress.slice(0, 6)}...{resolvedAddress.slice(-4)}</span>
+                {ensName} &rarr; <span className="font-mono text-[var(--text-secondary)]">{resolvedAddress.slice(0, 6)}...{resolvedAddress.slice(-4)}</span>
               </p>
               {isLoadingPrefs && (
-                <p className="text-xs text-zinc-500">Loading withdrawal preferences...</p>
+                <p className="text-xs text-[var(--text-muted)]">Loading withdrawal preferences...</p>
               )}
               {preferences.chain && (
                 <p className="text-xs text-cyan-400">
@@ -250,7 +250,7 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
         {(step === 'error' || bridgeStep === 'error') && (
           <button
             onClick={() => { reset(); bridgeReset(); }}
-            className="w-full py-2.5 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium border border-zinc-700 transition-colors"
+            className="w-full py-2.5 px-4 rounded-xl bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] text-sm font-medium border border-[var(--border-primary)] transition-colors"
           >
             Try again
           </button>

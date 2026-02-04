@@ -45,15 +45,15 @@ export function StatusIndicator({
               </span>
             )}
             {status === 'pending' && (
-              <span className="text-zinc-600 w-5 text-center text-[8px]">&#9679;</span>
+              <span className="text-[var(--text-muted)] w-5 text-center text-[8px]">&#9679;</span>
             )}
             <span
               className={
                 status === 'done'
-                  ? 'text-zinc-400'
+                  ? 'text-[var(--text-tertiary)]'
                   : status === 'active'
-                    ? 'text-white font-medium'
-                    : 'text-zinc-600'
+                    ? 'text-[var(--text-primary)] font-medium'
+                    : 'text-[var(--text-muted)]'
               }
             >
               {step.label}

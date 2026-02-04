@@ -7,34 +7,69 @@
   font-family: "Inter", system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #09090b;
+  color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Semantic tokens — light mode */
+  --bg-page: #f4f4f5;
+  --bg-card: rgba(255,255,255,0.8);
+  --bg-surface: rgba(244,244,245,0.8);
+  --bg-input: #ffffff;
+  --bg-hover: rgba(228,228,231,0.5);
+  --text-primary: #18181b;
+  --text-secondary: #3f3f46;
+  --text-tertiary: #52525b;
+  --text-muted: #a1a1aa;
+  --border-primary: #e4e4e7;
+  --border-subtle: rgba(0,0,0,0.08);
+  --backdrop: rgba(0,0,0,0.3);
+
+  color: var(--text-primary);
+  background-color: var(--bg-page);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --bg-page: #09090b;
+  --bg-card: rgba(24,24,27,0.6);
+  --bg-surface: rgba(39,39,42,0.5);
+  --bg-input: rgba(39,39,42,0.5);
+  --bg-hover: rgba(63,63,70,0.5);
+  --text-primary: #fff;
+  --text-secondary: #d4d4d8;
+  --text-tertiary: #a1a1aa;
+  --text-muted: #71717a;
+  --border-primary: #3f3f46;
+  --border-subtle: rgba(255,255,255,0.06);
+  --backdrop: rgba(0,0,0,0.6);
+
+  color: rgba(255, 255, 255, 0.87);
+  background-color: var(--bg-page);
 }
 
 body {
   margin: 0;
   min-height: 100dvh;
-  background-color: #09090b;
+  background-color: var(--bg-page);
 }
 
 /* Glass card */
 .glass-card {
-  background: rgba(24, 24, 27, 0.6);
+  background: var(--bg-card);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
 }
 
 /* Wallet option (Openfort) */
 .wallet-option {
-  background: rgba(24, 24, 27, 0.6);
+  background: var(--bg-card);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
   border-radius: 0.75rem;
   padding: 0.75rem 1rem;
   transition: border-color 0.2s;
