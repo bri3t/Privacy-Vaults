@@ -9,12 +9,18 @@ export interface VaultConfig {
   enabled: boolean
 }
 
+export interface YieldPoolIds {
+  aave: string
+  morpho: string
+}
+
 export interface NetworkConfig {
   chainId: number
   usdcAddress: Address
   deployBlock: bigint
   vaults: VaultConfig[]
   explorerBaseUrl: string
+  yieldPools?: YieldPoolIds
   usdcDomain: {
     name: string
     version: string
@@ -108,6 +114,10 @@ const MAINNET_CONFIG: NetworkConfig = {
   deployBlock: 0n,
   vaults: MAINNET_VAULTS,
   explorerBaseUrl: 'https://basescan.org',
+  yieldPools: {
+    aave: '7e0661bf-8cf3-45e6-9424-31916d4c7b84',   // Aave V3 USDC on Base
+    morpho: '7820bd3c-461a-4811-9f0b-1d39c1503c3f',  // Morpho STEAKUSDC on Base
+  },
   usdcDomain: {
     name: 'USDC',
     version: '2',

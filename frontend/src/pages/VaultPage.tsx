@@ -11,6 +11,7 @@ import { createPublicClient, http } from "viem";
 import { baseSepolia, base } from "viem/chains";
 import { DEFAULT_VAULT, type VaultConfig } from '../contracts/addresses.ts'
 import { useNetworkConfig } from '../hooks/useNetworkConfig.ts'
+import { useNetworkMode } from '../contexts/NetworkModeContext.tsx'
 
 
 type Tab = 'deposit' | 'withdraw'
@@ -26,6 +27,7 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
     const { isAuthenticated } = useUser();
     const { wallets, isLoadingWallets, setActiveWallet, isConnecting } = useWallets();
     const networkConfig = useNetworkConfig()
+    const { mode, isMainnet } = useNetworkMode()
 
     const [tab, setTab] = useState<Tab>('deposit')
     const [selectedVault, setSelectedVault] = useState<VaultConfig>(DEFAULT_VAULT)
@@ -76,6 +78,14 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
                 </button>
 
                 <div className="flex items-center gap-2">
+                    <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium ${
+                        isMainnet
+                            ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                    }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isMainnet ? 'bg-green-400' : 'bg-amber-400'} animate-pulse`} />
+                        {isMainnet ? 'Mainnet' : 'Testnet'} mode
+                    </span>
                     <OpenfortButton label={isAuthenticated ? undefined : 'Sign In'} />
                     <button
                         onClick={() => setSidebarOpen(true)}

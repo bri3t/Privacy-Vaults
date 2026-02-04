@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { OpenfortButton } from "@openfort/react";
 import { useDeposit } from '../hooks/useDeposit.ts'
 import { useUsdcBalance } from '../hooks/useUsdcBalance.ts'
+import { useYieldApy } from '../hooks/useYieldApy.ts'
 import { StatusIndicator } from './StatusIndicator.tsx'
 import { NoteModal } from './NoteModal.tsx'
 import { InsufficientBalanceModal } from './InsufficientBalanceModal.tsx'
@@ -35,6 +36,7 @@ export function DepositTab({ publicClient, isConnected, address, selectedVault, 
   const isActive = step !== 'idle' && step !== 'done' && step !== 'error'
 
   const { formattedBalance } = useUsdcBalance(publicClient, address as `0x${string}`, networkConfig.usdcAddress)
+  const { blendedApy } = useYieldApy(networkConfig.yieldPools)
 
   const handleDeposit = () => {
     const balance = parseFloat(formattedBalance || '0')
@@ -51,6 +53,14 @@ export function DepositTab({ publicClient, isConnected, address, selectedVault, 
         Deposit <span className="text-white font-medium">{selectedVault.label}</span> into the Privacy Vault.
         You will receive a secret note that can be used to withdraw later.
       </p>
+
+      {/* Balance */}
+      {isConnected && formattedBalance !== null && (
+        <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+          <img src="https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png" alt="USDC" className="w-4 h-4 rounded-full" />
+          Balance: <span className="text-zinc-300">{formattedBalance} USDC</span>
+        </div>
+      )}
 
       {/* Denomination selector */}
       <div className="flex gap-2">
@@ -79,31 +89,16 @@ export function DepositTab({ publicClient, isConnected, address, selectedVault, 
         })}
       </div>
 
-      {/* Token info */}
-      <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-zinc-800/50 border border-zinc-700/50">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-xs font-bold text-white">
-            $
-          </div>
-          <div>
-            <p className="text-sm font-medium text-white">USDC</p>
-            <p className="text-xs text-zinc-500">{selectedVault.label}</p>
-          </div>
-        </div>
-        {isConnected && formattedBalance !== null && (
-          <p className="text-xs text-zinc-500">
-            Balance: <span className="text-zinc-300">{formattedBalance}</span>
+      {/* Yield info (mainnet only) */}
+      {networkConfig.yieldPools && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <p className="text-xs text-emerald-400 font-medium">
+            Earning yield via Aave V3 + Morpho while deposited
+            {blendedApy !== null && <span className="text-emerald-300"> · est. {blendedApy.toFixed(2)}% APY</span>}
           </p>
-        )}
-      </div>
-
-      {/* Yield info */}
-      <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-        <p className="text-xs text-emerald-400 font-medium">
-          Earning yield via Aave V3 while deposited
-        </p>
-      </div>
+        </div>
+      )}
 
       {/* Action button */}
       {isConnected ? (
