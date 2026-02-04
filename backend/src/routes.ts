@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import type { Openfort } from "@openfort/openfort-node";
 import type { Config } from "./config.js";
-import { relayVaultDeposit, relayVaultWithdraw, getCommitments, getCurrentYieldIndex, type VaultDepositRequest, type VaultWithdrawRequest } from "./vault.js";
+import { relayVaultDeposit, relayVaultWithdraw, getCommitments, getCurrentYieldIndex, getDepositStats, type VaultDepositRequest, type VaultWithdrawRequest } from "./vault.js";
 
 const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 
@@ -237,6 +237,37 @@ export async function handleVaultCommitments(
     res.status(200).json({ commitments: result.commitments });
   } catch (error) {
     console.error("Vault commitments error:", error instanceof Error ? error.message : "Unknown error");
+    res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+}
+
+/**
+ * Returns deposit stats (leafIndex + timestamp) for the stats panel
+ */
+export async function handleVaultStats(
+  req: Request,
+  res: Response,
+  vaultConfig: Config["vault"]
+): Promise<void> {
+  try {
+    const vaultAddress = req.query.vaultAddress;
+    if (!isValidAddress(vaultAddress)) {
+      res.status(400).json({ error: "Missing or invalid vaultAddress query parameter" });
+      return;
+    }
+
+    const result = await getDepositStats(vaultAddress, vaultConfig);
+
+    if (result.error) {
+      res.status(500).json({ error: result.error });
+      return;
+    }
+
+    res.status(200).json({ deposits: result.deposits });
+  } catch (error) {
+    console.error("Vault stats error:", error instanceof Error ? error.message : "Unknown error");
     res.status(500).json({
       error: "Internal server error",
     });

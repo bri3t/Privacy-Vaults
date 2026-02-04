@@ -104,143 +104,158 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
   }
 
   return (
-    <div className="space-y-5">
-      <p className="text-zinc-400 text-sm leading-relaxed">
-        Paste your withdrawal note and specify the recipient address to
-        withdraw {selectedVault.label} from the vault.
-      </p>
-
-      <div className="space-y-2">
-        <label className="text-sm text-zinc-300 font-medium">
-          Withdrawal Note
-        </label>
-        <input
-          value={noteInput}
-          onChange={(e) => setNoteInput(e.target.value)}
-          placeholder="0x..."
-          disabled={isActive}
-          className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-xl text-sm font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500/60 transition-colors"
-        />
-        <label className="block">
-          <span className="text-xs text-zinc-500 cursor-pointer hover:text-violet-400 transition-colors">
-            Or upload a .txt file
-          </span>
+    <div className="flex flex-col flex-1">
+      {/* Form fields */}
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs text-zinc-300 font-medium">Note</label>
+            <div className="relative group">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="none"
+                className="text-zinc-500 hover:text-zinc-300 transition-colors cursor-help"
+              >
+                <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+                <text x="8" y="12" textAnchor="middle" fill="currentColor" fontSize="10" fontWeight="600">i</text>
+              </svg>
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs text-zinc-300 leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-20 shadow-lg">
+                Paste your withdrawal note and specify the recipient address to withdraw {selectedVault.label} from the vault.
+              </div>
+            </div>
+          </div>
           <input
-            type="file"
-            accept=".txt"
-            onChange={handleFileUpload}
-            className="hidden"
+            value={noteInput}
+            onChange={(e) => setNoteInput(e.target.value)}
+            placeholder="0x..."
             disabled={isActive}
+            className="w-full px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-xs font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500/60 transition-colors"
           />
-        </label>
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-sm text-zinc-300 font-medium">Recipient</label>
-        <div className="flex gap-2">
-          <input
-            value={recipient}
-            onChange={(e) => setRecipient(e.target.value)}
-            placeholder="0x... or name.eth"
-            disabled={isActive}
-            className="flex-1 px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-xl text-sm font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500/60 transition-colors"
-          />
-          {address && (
-            <button
-              onClick={() => setRecipient(address)}
+          <label className="block">
+            <span className="text-[11px] text-zinc-500 cursor-pointer hover:text-violet-400 transition-colors">
+              Or upload a .txt file
+            </span>
+            <input
+              type="file"
+              accept=".txt"
+              onChange={handleFileUpload}
+              className="hidden"
               disabled={isActive}
-              className="px-4 py-3 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-zinc-300 rounded-xl text-xs font-medium whitespace-nowrap border border-zinc-700 transition-colors"
-            >
-              Me
-            </button>
-          )}
+            />
+          </label>
         </div>
-        {/* ENS resolution feedback */}
-        {isResolving && (
-          <p className="text-xs text-zinc-500 flex items-center gap-1.5">
-            <span className="inline-block w-2.5 h-2.5 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
-            Resolving ENS name...
-          </p>
-        )}
-        {ensNotFound && (
-          <p className="text-xs text-red-400">
-            ENS name not found — no address is linked to this name.
-          </p>
-        )}
-        {ensName && resolvedAddress && (
-          <div className="space-y-1">
-            <p className="text-xs text-violet-400">
-              {ensName} &rarr; <span className="font-mono text-zinc-300">{resolvedAddress.slice(0, 6)}...{resolvedAddress.slice(-4)}</span>
-            </p>
-            {isLoadingPrefs && (
-              <p className="text-xs text-zinc-500">Loading withdrawal preferences...</p>
-            )}
-            {preferences.chain && (
-              <p className="text-xs text-cyan-400">
-                Preferences loaded: {preferences.chain.shortName}{preferences.token ? ` / ${preferences.token.symbol}` : ''}
-              </p>
+
+        <div className="space-y-1.5">
+          <label className="text-xs text-zinc-300 font-medium">Recipient</label>
+          <div className="flex gap-2">
+            <input
+              value={recipient}
+              onChange={(e) => setRecipient(e.target.value)}
+              placeholder="0x... or name.eth"
+              disabled={isActive}
+              className="flex-1 px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-xs font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500/60 transition-colors"
+            />
+            {address && (
+              <button
+                onClick={() => setRecipient(address)}
+                disabled={isActive}
+                className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-zinc-300 rounded-lg text-xs font-medium whitespace-nowrap border border-zinc-700 transition-colors"
+              >
+                Me
+              </button>
             )}
           </div>
+          {/* ENS resolution feedback */}
+          {isResolving && (
+            <p className="text-xs text-zinc-500 flex items-center gap-1.5">
+              <span className="inline-block w-2.5 h-2.5 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
+              Resolving ENS name...
+            </p>
+          )}
+          {ensNotFound && (
+            <p className="text-xs text-red-400">
+              ENS name not found — no address is linked to this name.
+            </p>
+          )}
+          {ensName && resolvedAddress && (
+            <div className="space-y-1">
+              <p className="text-xs text-violet-400">
+                {ensName} &rarr; <span className="font-mono text-zinc-300">{resolvedAddress.slice(0, 6)}...{resolvedAddress.slice(-4)}</span>
+              </p>
+              {isLoadingPrefs && (
+                <p className="text-xs text-zinc-500">Loading withdrawal preferences...</p>
+              )}
+              {preferences.chain && (
+                <p className="text-xs text-cyan-400">
+                  Preferences loaded: {preferences.chain.shortName}{preferences.token ? ` / ${preferences.token.symbol}` : ''}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Cross-chain selector (hidden in testnet mode) */}
+        {!isTestnet && (
+          <CrossChainSelector
+            enabled={crossChainEnabled}
+            onToggle={setCrossChainEnabled}
+            selectedChain={selectedChain}
+            onChainChange={setSelectedChain}
+            selectedToken={selectedToken}
+            onTokenChange={setSelectedToken}
+            quote={quote}
+            isLoadingQuote={isLoadingQuote}
+            quoteError={quoteError}
+          />
         )}
       </div>
 
-      {/* Cross-chain selector (hidden in testnet mode) */}
-      {!isTestnet && (
-        <CrossChainSelector
-          enabled={crossChainEnabled}
-          onToggle={setCrossChainEnabled}
-          selectedChain={selectedChain}
-          onChainChange={setSelectedChain}
-          selectedToken={selectedToken}
-          onTokenChange={setSelectedToken}
-          quote={quote}
-          isLoadingQuote={isLoadingQuote}
-          quoteError={quoteError}
-        />
-      )}
+      {/* Action button — pushed to bottom */}
+      <div className="mt-auto pt-5 space-y-5">
+        {isConnected ? (
+          <button
+            onClick={handleWithdraw}
+            disabled={isActive || isBridging || !noteInput.trim() || !isRecipientValid}
+            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-violet-500 to-cyan-400 text-white font-semibold hover:shadow-lg hover:shadow-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            Withdraw {selectedVault.label}
+          </button>
+        ) : (
+          <div className="space-y-2">
+            <OpenfortButton label="Log In to Withdraw" />
+          </div>
+        )}
 
-      {/* Action button */}
-      {isConnected ? (
-        <button
-          onClick={handleWithdraw}
-          disabled={isActive || isBridging || !noteInput.trim() || !isRecipientValid}
-          className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-violet-500 to-cyan-400 text-white font-semibold hover:shadow-lg hover:shadow-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-        >
-          Withdraw {selectedVault.label}
-        </button>
-      ) : (
-        <div className="space-y-2">
-          <OpenfortButton label="Log In to Withdraw" />
-        </div>
-      )}
+        {/* Withdraw progress */}
+        {step !== 'idle' && (
+          <StatusIndicator
+            steps={WITHDRAW_STEPS}
+            currentStep={step}
+            error={error}
+          />
+        )}
 
-      {/* Withdraw progress */}
-      {step !== 'idle' && (
-        <StatusIndicator
-          steps={WITHDRAW_STEPS}
-          currentStep={step}
-          error={error}
-        />
-      )}
+        {/* Bridge progress (step 2 of cross-chain) */}
+        {bridgeStep !== 'idle' && (
+          <StatusIndicator
+            steps={BRIDGE_STEPS}
+            currentStep={bridgeStep}
+            error={bridgeError}
+          />
+        )}
 
-      {/* Bridge progress (step 2 of cross-chain) */}
-      {bridgeStep !== 'idle' && (
-        <StatusIndicator
-          steps={BRIDGE_STEPS}
-          currentStep={bridgeStep}
-          error={bridgeError}
-        />
-      )}
-
-      {/* Error retry */}
-      {(step === 'error' || bridgeStep === 'error') && (
-        <button
-          onClick={() => { reset(); bridgeReset(); }}
-          className="w-full py-2.5 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium border border-zinc-700 transition-colors"
-        >
-          Try again
-        </button>
-      )}
+        {/* Error retry */}
+        {(step === 'error' || bridgeStep === 'error') && (
+          <button
+            onClick={() => { reset(); bridgeReset(); }}
+            className="w-full py-2.5 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium border border-zinc-700 transition-colors"
+          >
+            Try again
+          </button>
+        )}
+      </div>
 
       {/* Success modal — base chain withdraw done */}
       {showSuccessModal && txHash && (

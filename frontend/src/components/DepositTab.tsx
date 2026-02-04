@@ -50,118 +50,123 @@ export function DepositTab({ publicClient, isConnected, address, selectedVault, 
   }
 
   return (
-    <div className="space-y-5">
-      <p className="text-zinc-400 text-sm leading-relaxed">
-        Deposit <span className="text-white font-medium">{selectedVault.label}</span> into the Privacy Vault.
-        You will receive a secret note that can be used to withdraw later.
-      </p>
+    <div className="flex flex-col flex-1">
+      {/* Form fields */}
+      <div className="space-y-5">
+        <p className="text-zinc-400 text-sm leading-relaxed">
+          Deposit <span className="text-white font-medium">{selectedVault.label}</span> into the Privacy Vault.
+          You will receive a secret note that can be used to withdraw later.
+        </p>
 
-      {/* Balance */}
-      {isConnected && formattedBalance !== null && (
-        <div className="flex items-center justify-between text-xs text-zinc-500">
-          <div className="flex items-center gap-1.5">
-            <img src="https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png" alt="USDC" className="w-4 h-4 rounded-full" />
-            Balance: <span className="text-zinc-300">{formattedBalance} USDC</span>
+        {/* Balance */}
+        {isConnected && formattedBalance !== null && (
+          <div className="flex items-center justify-between text-xs text-zinc-500">
+            <div className="flex items-center gap-1.5">
+              <img src="https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png" alt="USDC" className="w-4 h-4 rounded-full" />
+              Balance: <span className="text-zinc-300">{formattedBalance} USDC</span>
+            </div>
+            {isTestnet && (
+              <a
+                href="https://faucet.circle.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-violet-400 hover:text-violet-300 transition-colors"
+              >
+                Get testnet USDC
+              </a>
+            )}
           </div>
-          {isTestnet && (
-            <a
-              href="https://faucet.circle.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-violet-400 hover:text-violet-300 transition-colors"
-            >
-              Get testnet USDC
-            </a>
-          )}
-        </div>
-      )}
+        )}
 
-      {/* Denomination selector */}
-      <div className="flex gap-2">
-        {networkConfig.vaults.map((vault) => {
-          const isSelected = vault.denomination === selectedVault.denomination
-          const isDisabled = !vault.enabled
-          return (
-            <button
-              key={vault.label}
-              onClick={() => !isDisabled && onVaultChange(vault)}
-              disabled={isDisabled && isActive}
-              className={`
-                flex-1 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all border
-                ${isSelected
-                  ? 'bg-gradient-to-r from-violet-500/20 to-cyan-400/20 border-violet-500/50 text-white shadow-sm shadow-violet-500/10'
-                  : isDisabled
-                    ? 'bg-zinc-800/30 border-zinc-800 text-zinc-600 cursor-not-allowed'
-                    : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-400 hover:border-zinc-600 hover:text-zinc-300'
-                }
-              `}
-            >
-              {vault.displayAmount}
-              {isDisabled && <span className="block text-[10px] font-normal text-zinc-600">Soon</span>}
-            </button>
-          )
-        })}
+        {/* Denomination selector */}
+        <div className="flex gap-2">
+          {networkConfig.vaults.map((vault) => {
+            const isSelected = vault.denomination === selectedVault.denomination
+            const isDisabled = !vault.enabled
+            return (
+              <button
+                key={vault.label}
+                onClick={() => !isDisabled && onVaultChange(vault)}
+                disabled={isDisabled && isActive}
+                className={`
+                  flex-1 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all border
+                  ${isSelected
+                    ? 'bg-gradient-to-r from-violet-500/20 to-cyan-400/20 border-violet-500/50 text-white shadow-sm shadow-violet-500/10'
+                    : isDisabled
+                      ? 'bg-zinc-800/30 border-zinc-800 text-zinc-600 cursor-not-allowed'
+                      : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-400 hover:border-zinc-600 hover:text-zinc-300'
+                  }
+                `}
+              >
+                {vault.displayAmount}
+                {isDisabled && <span className="block text-[10px] font-normal text-zinc-600">Soon</span>}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Yield info (mainnet only) */}
+        {networkConfig.yieldPools && (
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <p className="text-xs text-emerald-400 font-medium">
+              Earning yield via Aave V3 + Morpho while deposited
+              {blendedApy !== null && <span className="text-emerald-300"> · est. {blendedApy.toFixed(2)}% APY</span>}
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Yield info (mainnet only) */}
-      {networkConfig.yieldPools && (
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <p className="text-xs text-emerald-400 font-medium">
-            Earning yield via Aave V3 + Morpho while deposited
-            {blendedApy !== null && <span className="text-emerald-300"> · est. {blendedApy.toFixed(2)}% APY</span>}
-          </p>
-        </div>
-      )}
-
-      {/* Action button */}
-      {isConnected ? (
-        <button
-          onClick={handleDeposit}
-          disabled={isActive}
-          className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-violet-500 to-cyan-400 text-white font-semibold hover:shadow-lg hover:shadow-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-        >
-          Deposit {selectedVault.label}
-        </button>
-      ) : (
-        <div className="space-y-2">
-          <OpenfortButton label="Log In to Deposit" />
-        </div>
-      )}
-
-      {/* Progress */}
-      {step !== 'idle' && (
-        <StatusIndicator
-          steps={DEPOSIT_STEPS}
-          currentStep={step}
-          error={error}
-        />
-      )}
-
-      {/* Error retry */}
-      {step === 'error' && (
-        <button
-          onClick={reset}
-          className="w-full py-2.5 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium border border-zinc-700 transition-colors"
-        >
-          Try again
-        </button>
-      )}
-
-      {/* Tx link */}
-      {txHash && (
-        <div className="text-xs text-zinc-500">
-          Tx:{' '}
-          <a
-            href={`${networkConfig.explorerBaseUrl}/tx/${txHash}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-violet-400 hover:underline"
+      {/* Action button — pushed to bottom */}
+      <div className="mt-auto pt-5 space-y-5">
+        {isConnected ? (
+          <button
+            onClick={handleDeposit}
+            disabled={isActive}
+            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-violet-500 to-cyan-400 text-white font-semibold hover:shadow-lg hover:shadow-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            {txHash.slice(0, 10)}...{txHash.slice(-8)}
-          </a>
-        </div>
-      )}
+            Deposit {selectedVault.label}
+          </button>
+        ) : (
+          <div className="space-y-2">
+            <OpenfortButton label="Log In to Deposit" />
+          </div>
+        )}
+
+        {/* Progress */}
+        {step !== 'idle' && (
+          <StatusIndicator
+            steps={DEPOSIT_STEPS}
+            currentStep={step}
+            error={error}
+          />
+        )}
+
+        {/* Error retry */}
+        {step === 'error' && (
+          <button
+            onClick={reset}
+            className="w-full py-2.5 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium border border-zinc-700 transition-colors"
+          >
+            Try again
+          </button>
+        )}
+
+        {/* Tx link */}
+        {txHash && (
+          <div className="text-xs text-zinc-500">
+            Tx:{' '}
+            <a
+              href={`${networkConfig.explorerBaseUrl}/tx/${txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-violet-400 hover:underline"
+            >
+              {txHash.slice(0, 10)}...{txHash.slice(-8)}
+            </a>
+          </div>
+        )}
+      </div>
 
       {/* Note modal */}
       {step === 'done' && note && <NoteModal note={note} onClose={reset} />}

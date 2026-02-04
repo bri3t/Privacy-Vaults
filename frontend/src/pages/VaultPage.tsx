@@ -4,6 +4,7 @@ import { AnimatedBackground } from '../components/AnimatedBackground.tsx'
 import { WithdrawTab } from '../components/WithdrawTab.tsx'
 import { DepositTab } from '../components/DepositTab.tsx'
 import { SidebarMenu } from '../components/SidebarMenu.tsx'
+import { StatsPanel } from '../components/StatsPanel.tsx'
 
 import { useUser, useWallets, OpenfortButton } from "@openfort/react";
 import { useAccount, useSwitchChain } from "wagmi";
@@ -110,35 +111,41 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
             )}
 
 
-            {/* Main card */}
-            <div className="relative z-10 max-w-lg mx-auto px-4 pb-8">
-                <div className="glass-card rounded-2xl shadow-xl shadow-violet-500/5">
-                    {/* Tabs */}
-                    <div className="flex overflow-hidden rounded-t-2xl">
-                        {(['deposit', 'withdraw'] as const).map((t) => (
-                            <button
-                                key={t}
-                                onClick={() => setTab(t)}
-                                className={`flex-1 py-4 text-sm font-semibold transition-all relative ${tab === t
-                                    ? 'text-white'
-                                    : 'text-zinc-500 hover:text-zinc-300'
-                                    }`}
-                            >
-                                {t.charAt(0).toUpperCase() + t.slice(1)}
-                                {tab === t && (
-                                    <span className="absolute bottom-0 inset-x-4 h-0.5 bg-gradient-to-r from-violet-500 to-cyan-400 rounded-full" />
-                                )}
-                            </button>
-                        ))}
-                    </div>
+            {/* Main content — two-card layout */}
+            <div className="relative z-10 max-w-6xl mx-auto px-4 pb-8 flex flex-col lg:flex-row gap-6">
+                <div className="w-full lg:w-1/2 min-h-[344px]">
+                    <div className="glass-card rounded-2xl shadow-xl shadow-violet-500/5 h-full flex flex-col">
+                        {/* Tabs */}
+                        <div className="flex overflow-hidden rounded-t-2xl">
+                            {(['deposit', 'withdraw'] as const).map((t) => (
+                                <button
+                                    key={t}
+                                    onClick={() => setTab(t)}
+                                    className={`flex-1 py-4 text-sm font-semibold transition-all relative ${tab === t
+                                        ? 'text-white'
+                                        : 'text-zinc-500 hover:text-zinc-300'
+                                        }`}
+                                >
+                                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                                    {tab === t && (
+                                        <span className="absolute bottom-0 inset-x-4 h-0.5 bg-gradient-to-r from-violet-500 to-cyan-400 rounded-full" />
+                                    )}
+                                </button>
+                            ))}
+                        </div>
 
-                    {/* Content */}
-                    <div className="p-6">
-                        {tab === 'deposit'
-                            ? <DepositTab publicClient={publicClient} isConnected={isConnected} address={address} selectedVault={selectedVault} onVaultChange={setSelectedVault} networkConfig={networkConfig} />
-                            : <WithdrawTab selectedVault={selectedVault} networkConfig={networkConfig} />
-                        }
+                        {/* Content */}
+                        <div className="p-6 flex-1 flex flex-col">
+                            {tab === 'deposit'
+                                ? <DepositTab publicClient={publicClient} isConnected={isConnected} address={address} selectedVault={selectedVault} onVaultChange={setSelectedVault} networkConfig={networkConfig} />
+                                : <WithdrawTab selectedVault={selectedVault} networkConfig={networkConfig} />
+                            }
+                        </div>
                     </div>
+                </div>
+
+                <div className="w-full lg:w-1/2 min-h-[344px]">
+                    <StatsPanel selectedVault={selectedVault} networkConfig={networkConfig} />
                 </div>
             </div>
 

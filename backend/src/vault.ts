@@ -312,6 +312,76 @@ export async function getCommitments(
 }
 
 /**
+ * Fetches deposit stats (leafIndex + timestamp) from vault contract events
+ */
+export async function getDepositStats(
+    vaultAddress: string,
+    vaultConfig: Config["vault"],
+): Promise<{ deposits: { leafIndex: number; timestamp: number }[]; error?: string }> {
+    try {
+        const chain = vaultConfig.chainId === 8453 ? base : baseSepolia;
+        const rpcUrl = getRpcUrl(vaultConfig.chainId);
+
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(rpcUrl),
+        });
+
+        const eventAbi = parseAbiItem(
+            "event DepositWithAuthorization(bytes32 indexed commitment, uint32 leafIndex, uint256 timestamp, uint256 yieldIndex)",
+        );
+        const currentBlock = await publicClient.getBlockNumber();
+        let allLogs: Log[] = [];
+
+        try {
+            allLogs = await publicClient.getLogs({
+                address: vaultAddress as Address,
+                event: eventAbi,
+                fromBlock: DEPLOY_BLOCK,
+                toBlock: currentBlock,
+            });
+        } catch {
+            const totalBlocks = currentBlock - DEPLOY_BLOCK;
+            const chunkSize = totalBlocks < 100n ? 10n : totalBlocks < 10_000n ? 1_000n : 10_000n;
+
+            for (let from = DEPLOY_BLOCK; from <= currentBlock; from += chunkSize) {
+                const to = from + chunkSize - 1n > currentBlock ? currentBlock : from + chunkSize - 1n;
+                for (let attempt = 0; attempt < 3; attempt++) {
+                    try {
+                        const logs = await publicClient.getLogs({
+                            address: vaultAddress as Address,
+                            event: eventAbi,
+                            fromBlock: from,
+                            toBlock: to,
+                        });
+                        allLogs.push(...logs);
+                        break;
+                    } catch (e) {
+                        if (attempt === 2) throw e;
+                        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+                    }
+                }
+            }
+        }
+
+        type DepositLog = Log & { args: { commitment: string; leafIndex: number; timestamp: bigint; yieldIndex: bigint } };
+        const sorted = (allLogs as DepositLog[]).sort((a, b) => a.args.leafIndex - b.args.leafIndex);
+        const deposits = sorted.map((log) => ({
+            leafIndex: log.args.leafIndex,
+            timestamp: Number(log.args.timestamp),
+        }));
+
+        return { deposits };
+    } catch (error) {
+        console.error("Error fetching deposit stats:", error instanceof Error ? error.message : "Unknown error");
+        return {
+            deposits: [],
+            error: error instanceof Error ? error.message : "Unknown error",
+        };
+    }
+}
+
+/**
  * Reads the current bucketed yield index from the vault contract
  */
 export async function getCurrentYieldIndex(
