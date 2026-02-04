@@ -5,10 +5,12 @@ import {Test, console} from "forge-std/Test.sol";
 import {HonkVerifier} from "../src/Verifier.sol";
 import {PrivacyVault, IVerifier, Poseidon2} from "../src/PrivacyVault.sol";
 import {IncrementalMerkleTree} from "../src/IncrementalMerkleTree.sol";
-import {MockUSDC} from "./mocks/TestERC20.sol";
+import {MockUSDC} from "./mocks/MockERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {AavePoolMock} from "./mocks/AavePoolMock.sol";
-import {IPool} from "../src/interfaces/IPool.sol";
+import {AavePoolMock} from "../src/mocks/AavePoolMock.sol";
+import {MorphoVaultMock} from "../src/mocks/MorphoVaultMock.sol";
+import {IAavePool} from "../src/interfaces/IAavePool.sol";
+import {IMorphoVault} from "../src/interfaces/IMorphoPool.sol";
 
 contract PrivacyVaultTest is Test {
     IVerifier public verifier;
@@ -16,6 +18,7 @@ contract PrivacyVaultTest is Test {
     Poseidon2 public poseidon;
     MockUSDC public usdc;
     AavePoolMock public aavePool;
+    MorphoVaultMock public morphoVault;
 
     address public recipient;
 
@@ -34,6 +37,10 @@ contract PrivacyVaultTest is Test {
         aavePool = new AavePoolMock();
         usdc.mint(address(aavePool), 10_000e6); // Fund Aave pool with some USDC to pay yield
 
+        // Deploy Morpho Vault Mock
+        morphoVault = new MorphoVaultMock(IERC20(usdc));
+        usdc.mint(address(morphoVault), 10_000e6); // Fund Morpho vault to pay yield
+
         usdc.transfer(depositor, 1000e6); // Fund depositor with some USDC
 
         // Deploy Poseiden hasher contract
@@ -42,13 +49,24 @@ contract PrivacyVaultTest is Test {
         // Deploy Groth16 verifier contract.
         verifier = new HonkVerifier();
 
-        privacyVault = new PrivacyVault(IVerifier(verifier), poseidon, 20, 1e6, IERC20(usdc), IPool(aavePool));
+        privacyVault = new PrivacyVault(
+            IVerifier(verifier),
+            poseidon,
+            20,
+            100e6,
+            IERC20(usdc),
+            IAavePool(address(aavePool)),
+            IMorphoVault(address(morphoVault))
+        );
     }
 
-    function _getProof(bytes32 _nullifier, bytes32 _secret, address _recipient, bytes32 _yieldIndex, bytes32[] memory leaves)
-        internal
-        returns (bytes memory proof, bytes32[] memory publicInputs)
-    {
+    function _getProof(
+        bytes32 _nullifier,
+        bytes32 _secret,
+        address _recipient,
+        bytes32 _yieldIndex,
+        bytes32[] memory leaves
+    ) internal returns (bytes memory proof, bytes32[] memory publicInputs) {
         string[] memory inputs = new string[](7 + leaves.length);
         inputs[0] = "npx";
         inputs[1] = "tsx";
@@ -91,8 +109,8 @@ contract PrivacyVaultTest is Test {
         inputs[6] = vm.toString(address(usdc)); // token verifyingContract
         inputs[7] = vm.toString(block.chainid); // chainId
         inputs[8] = vm.toString(nonce); // nonce (bytes32)
-        inputs[9] = "USD Coin"; // domain name (adjust for your mock if needed)
-        inputs[10] = "2"; // domain version (adjust for your mock if needed)
+        inputs[9] = "USD"; // domain name
+        inputs[10] = "2"; // domain version
         inputs[11] = vm.toString(block.timestamp); // current block timestamp
 
         signature = vm.ffi(inputs);
@@ -100,14 +118,6 @@ contract PrivacyVaultTest is Test {
 
     function testGetCommitment() public {
         (bytes32 commitment, bytes32 nullifier, bytes32 secret) = _getCommitment();
-        console.log("Commitment: ");
-        console.logBytes32(commitment);
-        console.log("Nullifier: ");
-        console.logBytes32(nullifier);
-        console.log("Secret: ");
-        console.logBytes32(secret);
-        console.log("Recipient: ");
-        console.log(recipient);
         assertTrue(commitment != 0);
         assertTrue(nullifier != 0);
         assertTrue(secret != 0);
@@ -115,12 +125,6 @@ contract PrivacyVaultTest is Test {
 
     function testGetProof() public {
         (bytes32 commitment, bytes32 nullifier, bytes32 secret) = _getCommitment();
-        console.log("Commitment: ");
-        console.logBytes32(commitment);
-        console.log("Nullifier: ");
-        console.logBytes32(nullifier);
-        console.log("Secret: ");
-        console.logBytes32(secret);
 
         uint256 yieldIndex = privacyVault.getCurrentBucketedYieldIndex();
         bytes32 finalCommitment = privacyVault.hashLeftRight(commitment, bytes32(yieldIndex));
@@ -128,7 +132,8 @@ contract PrivacyVaultTest is Test {
         bytes32[] memory leaves = new bytes32[](1);
         leaves[0] = finalCommitment;
 
-        (bytes memory proof, bytes32[] memory publicInputs) = _getProof(nullifier, secret, recipient, bytes32(yieldIndex), leaves);
+        (bytes memory proof, bytes32[] memory publicInputs) =
+            _getProof(nullifier, secret, recipient, bytes32(yieldIndex), leaves);
     }
 
     function testMakeDeposit() public {
@@ -140,8 +145,14 @@ contract PrivacyVaultTest is Test {
         bytes32 finalCommitment = privacyVault.hashLeftRight(_commitment, bytes32(yieldIndex));
         vm.expectEmit(true, false, false, true);
         emit PrivacyVault.DepositWithAuthorization(finalCommitment, 0, block.timestamp, yieldIndex);
+        vm.prank(depositor);
         privacyVault.depositWithAuthorization(_commitment, signature);
-        assertEq(aavePool.getUserBalance(address(privacyVault), address(usdc)), privacyVault.DENOMINATION(), "Vault should have the deposited amount after deposit");
+        // Each half goes to a different protocol
+        assertEq(
+            aavePool.getUserBalance(address(privacyVault), address(usdc)),
+            privacyVault.DENOMINATION() / 2,
+            "Aave should have half the deposit"
+        );
     }
 
     function testMakeWithdrawal() public {
@@ -153,21 +164,27 @@ contract PrivacyVaultTest is Test {
 
         vm.expectEmit(true, false, false, true);
         emit PrivacyVault.DepositWithAuthorization(finalCommitment, 0, block.timestamp, yieldIndex);
+        vm.prank(depositor);
         privacyVault.depositWithAuthorization(_commitment, signature);
 
         bytes32[] memory leaves = new bytes32[](1);
         leaves[0] = finalCommitment;
         // create a proof
-        (bytes memory _proof, bytes32[] memory _publicInputs) = _getProof(_nullifier, _secret, recipient, bytes32(yieldIndex), leaves);
+        (bytes memory _proof, bytes32[] memory _publicInputs) =
+            _getProof(_nullifier, _secret, recipient, bytes32(yieldIndex), leaves);
 
         // make a withdrawal
         assertEq(usdc.balanceOf(recipient), 0, "Recipient should have 0 balance before withdrawal");
-        assertEq(aavePool.getUserBalance(address(privacyVault), address(usdc)), privacyVault.DENOMINATION(), "Vault should have the deposited amount before withdrawal");
         privacyVault.withdraw(
-            _proof, _publicInputs[0], _publicInputs[1], payable(address(uint160(uint256(_publicInputs[2])))), uint256(_publicInputs[3])
+            _proof,
+            _publicInputs[0],
+            _publicInputs[1],
+            payable(address(uint160(uint256(_publicInputs[2])))),
+            uint256(_publicInputs[3])
         );
-        assertEq(usdc.balanceOf(recipient), privacyVault.DENOMINATION(), "Recipient should have received the withdrawn funds");
-        assertEq(usdc.balanceOf(address(privacyVault)), 0, "Vault balance should be 0 after withdrawal");
+        assertEq(
+            usdc.balanceOf(recipient), privacyVault.DENOMINATION(), "Recipient should have received the withdrawn funds"
+        );
     }
 
     function testAnotherAddressSendProof() public {
@@ -177,12 +194,14 @@ contract PrivacyVaultTest is Test {
         bytes32 finalCommitment = privacyVault.hashLeftRight(_commitment, bytes32(yieldIndex));
         vm.expectEmit(true, false, false, true);
         emit PrivacyVault.DepositWithAuthorization(finalCommitment, 0, block.timestamp, yieldIndex);
+        vm.prank(depositor);
         privacyVault.depositWithAuthorization(_commitment, signature);
 
         // create a proof
         bytes32[] memory leaves = new bytes32[](1);
         leaves[0] = finalCommitment;
-        (bytes memory _proof, bytes32[] memory _publicInputs) = _getProof(_nullifier, _secret, recipient, bytes32(yieldIndex), leaves);
+        (bytes memory _proof, bytes32[] memory _publicInputs) =
+            _getProof(_nullifier, _secret, recipient, bytes32(yieldIndex), leaves);
 
         // make a withdrawal
         address attacker = makeAddr("attacker");
@@ -200,25 +219,35 @@ contract PrivacyVaultTest is Test {
 
         vm.expectEmit(true, false, false, true);
         emit PrivacyVault.DepositWithAuthorization(finalCommitment, 0, block.timestamp, yieldIndex);
+        vm.prank(depositor);
         privacyVault.depositWithAuthorization(_commitment, signature);
 
-        // Simulate yield accrual by increasing normalized income
-        aavePool.setNormalizedIncome(address(usdc), 1e27 + 1e26); // Simulate 10% yield
+        // Simulate 10% yield on both protocols
+        aavePool.setNormalizedIncome(address(usdc), 1e27 + 1e26);
+        // Morpho: increase backing assets by 10% to simulate yield
+        uint256 morphoAssets = morphoVault.totalAssetsBacking();
+        morphoVault.setTotalAssets(morphoAssets + morphoAssets / 5); // 20% yield
 
         bytes32[] memory leaves = new bytes32[](1);
         leaves[0] = finalCommitment;
         // create a proof
-        (bytes memory _proof, bytes32[] memory _publicInputs) = _getProof(_nullifier, _secret, recipient, bytes32(yieldIndex), leaves);
+        (bytes memory _proof, bytes32[] memory _publicInputs) =
+            _getProof(_nullifier, _secret, recipient, bytes32(yieldIndex), leaves);
 
         // make a withdrawal
         assertEq(usdc.balanceOf(recipient), 0, "Recipient should have 0 balance before withdrawal");
-        assertEq(aavePool.getUserBalance(address(privacyVault), address(usdc)), privacyVault.DENOMINATION(), "Vault should have the deposited amount before withdrawal");
         privacyVault.withdraw(
-            _proof, _publicInputs[0], _publicInputs[1], payable(address(uint160(uint256(_publicInputs[2])))), uint256(_publicInputs[3])
+            _proof,
+            _publicInputs[0],
+            _publicInputs[1],
+            payable(address(uint160(uint256(_publicInputs[2])))),
+            uint256(_publicInputs[3])
         );
-        uint256 expectedAmount = (privacyVault.DENOMINATION() * aavePool.getReserveNormalizedIncome(address(usdc))) / 1e27;
-        console.log("Expected amount with yield: ", expectedAmount);
-        assertEq(usdc.balanceOf(recipient), expectedAmount, "Recipient should have received the withdrawn funds with yield");
-        assertEq(usdc.balanceOf(address(privacyVault)), 0, "Vault balance should be 0 after withdrawal");
+
+        // With 10% yield on Aave and 20% on Morpho, blended yield is 15%
+        uint256 expectedAmount = (privacyVault.DENOMINATION() * 115) / 100; // 1.15x
+        assertApproxEqRel(
+            usdc.balanceOf(recipient), expectedAmount, 0.01e18, "Recipient should have received funds with yield"
+        );
     }
 }

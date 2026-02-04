@@ -7,41 +7,47 @@ import {PrivacyVault, IVerifier, Poseidon2} from "../src/PrivacyVault.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAavePool} from "../src/interfaces/IAavePool.sol";
 import {IMorphoVault} from "../src/interfaces/IMorphoPool.sol";
+import {AavePoolMock} from "../src/mocks/AavePoolMock.sol";
+import {MorphoVaultMock} from "../src/mocks/MorphoVaultMock.sol";
 
-/// @notice Deploys 4 multi-denomination PrivacyVaults on Base mainnet with real Aave + Morpho strategies.
-contract Deploy is Script {
+/// @notice Deploys 4 multi-denomination PrivacyVaults on Base Sepolia with mock strategies.
+contract DeployTestnet is Script {
     function run() external {
-        address usdc = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913; // USDC on Base
-        address aavePool = 0xA238Dd80C259a72e81d7e4664a9801593F98d1c5; // Aave V3 Pool on Base
-        address morphoVault = address(0); // TODO: set MetaMorpho USDC vault on Base
+        address usdc = 0x036CbD53842c5426634e7929541eC2318f3dCF7e; // USDC on Base Sepolia
 
         uint256[4] memory denominations = [uint256(1e6), 10e6, 20e6, 50e6];
         string[4] memory labels = ["1 USDC", "10 USDC", "20 USDC", "50 USDC"];
 
         vm.startBroadcast();
 
+        // Deploy mock strategies (shared)
+        AavePoolMock aaveMock = new AavePoolMock();
+        MorphoVaultMock morphoMock = new MorphoVaultMock(IERC20(usdc));
+
         // Deploy core contracts (shared)
         Poseidon2 poseidon = new Poseidon2();
         HonkVerifier verifier = new HonkVerifier();
 
         // Deploy one vault per denomination
-        for (uint256 i = 0; i < 4; i++) {
+        for (uint256 i = 0; i < denominations.length; i++) {
             PrivacyVault vault = new PrivacyVault(
                 IVerifier(verifier),
                 poseidon,
                 20, // merkle tree depth
                 denominations[i],
                 IERC20(usdc),
-                IAavePool(aavePool),
-                IMorphoVault(morphoVault)
+                IAavePool(address(aaveMock)),
+                IMorphoVault(address(morphoMock))
             );
             console.log(labels[i], address(vault));
         }
 
         vm.stopBroadcast();
 
-        console.log("=== Mainnet Deployment (Base) ===");
-        console.log("Poseidon2:    ", address(poseidon));
-        console.log("HonkVerifier: ", address(verifier));
+        console.log("=== Testnet Deployment (Base Sepolia) ===");
+        console.log("AavePoolMock:    ", address(aaveMock));
+        console.log("MorphoVaultMock: ", address(morphoMock));
+        console.log("Poseidon2:       ", address(poseidon));
+        console.log("HonkVerifier:    ", address(verifier));
     }
 }

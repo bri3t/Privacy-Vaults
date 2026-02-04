@@ -7,13 +7,13 @@ import {
 } from '@openfort/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
-import { baseSepolia, mainnet } from 'viem/chains'
+import { baseSepolia, base } from 'viem/chains'
 import { createConfig, WagmiProvider } from 'wagmi'
 
 const wagmiConfig = createConfig(
   getDefaultConfig({
     appName: 'Privacy Vault',
-    chains: [baseSepolia, mainnet],
+    chains: [baseSepolia, base],
     walletConnectProjectId: import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID,
   }),
 )

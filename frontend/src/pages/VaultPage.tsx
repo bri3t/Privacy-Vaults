@@ -3,34 +3,50 @@ import { useState, useEffect, useMemo } from 'react'
 import { AnimatedBackground } from '../components/AnimatedBackground.tsx'
 import { WithdrawTab } from '../components/WithdrawTab.tsx'
 import { DepositTab } from '../components/DepositTab.tsx'
+import { SidebarMenu } from '../components/SidebarMenu.tsx'
 
 import { useUser, useWallets, OpenfortButton } from "@openfort/react";
 import { useAccount, useSwitchChain } from "wagmi";
 import { createPublicClient, http } from "viem";
-import { baseSepolia } from "viem/chains";
+import { baseSepolia, base } from "viem/chains";
 import { DEFAULT_VAULT, type VaultConfig } from '../contracts/addresses.ts'
+import { useNetworkConfig } from '../hooks/useNetworkConfig.ts'
 
 
 type Tab = 'deposit' | 'withdraw'
+
+const CHAIN_MAP: Record<number, typeof baseSepolia | typeof base> = {
+    [baseSepolia.id]: baseSepolia,
+    [base.id]: base,
+}
 
 export function VaultPage({ onBack }: { onBack: () => void }) {
     const { address, isConnected, chainId } = useAccount();
     const { switchChainAsync } = useSwitchChain();
     const { isAuthenticated } = useUser();
     const { wallets, isLoadingWallets, setActiveWallet, isConnecting } = useWallets();
+    const networkConfig = useNetworkConfig()
 
     const [tab, setTab] = useState<Tab>('deposit')
     const [selectedVault, setSelectedVault] = useState<VaultConfig>(DEFAULT_VAULT)
+    const [sidebarOpen, setSidebarOpen] = useState(false)
+
+    const viemChain = CHAIN_MAP[networkConfig.chainId] ?? baseSepolia
 
     const publicClient = useMemo(
         () =>
             createPublicClient({
-                chain: baseSepolia,
+                chain: viemChain,
                 transport: http(),
             }),
-        [],
+        [viemChain],
     );
 
+    // Reset selected vault when network config changes
+    useEffect(() => {
+        const defaultVault = networkConfig.vaults.find((v) => v.enabled) ?? networkConfig.vaults[0]
+        setSelectedVault(defaultVault)
+    }, [networkConfig])
 
     // Auto-select wallet when there's exactly one and wagmi isn't connected yet
     useEffect(() => {
@@ -39,19 +55,19 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
         }
     }, [isAuthenticated, isConnected, isConnecting, isLoadingWallets, wallets, setActiveWallet])
 
-    // Auto-switch to Base Sepolia when connected on wrong chain
+    // Auto-switch to correct chain when connected on wrong chain
     useEffect(() => {
-        if (isConnected && chainId !== baseSepolia.id) {
-            switchChainAsync({ chainId: baseSepolia.id }).catch(() => {})
+        if (isConnected && chainId !== networkConfig.chainId) {
+            switchChainAsync({ chainId: networkConfig.chainId }).catch(() => {})
         }
-    }, [isConnected, chainId, switchChainAsync])
+    }, [isConnected, chainId, networkConfig.chainId, switchChainAsync])
 
     return (
         <div className="relative min-h-screen bg-zinc-950">
             <AnimatedBackground />
 
-            {/* Top bar */}
-            <div className="relative z-10 max-w-lg mx-auto px-4 pt-6 pb-4 flex items-center justify-between">
+            {/* Top bar — full width, pinned to screen edges */}
+            <div className="relative z-10 w-full px-6 pt-5 pb-4 flex items-center justify-between">
                 <button
                     onClick={onBack}
                     className="text-lg font-bold bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
@@ -59,7 +75,18 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
                     Privacy Vault
                 </button>
 
-                <OpenfortButton label={isAuthenticated ? undefined : 'Sign In'} />
+                <div className="flex items-center gap-2">
+                    <OpenfortButton label={isAuthenticated ? undefined : 'Sign In'} />
+                    <button
+                        onClick={() => setSidebarOpen(true)}
+                        className="p-2 text-zinc-400 hover:text-white transition-colors"
+                        aria-label="Open settings"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             {/* Loading wallet state */}
@@ -75,9 +102,9 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
 
             {/* Main card */}
             <div className="relative z-10 max-w-lg mx-auto px-4 pb-8">
-                <div className="glass-card rounded-2xl overflow-hidden shadow-xl shadow-violet-500/5">
+                <div className="glass-card rounded-2xl shadow-xl shadow-violet-500/5">
                     {/* Tabs */}
-                    <div className="flex">
+                    <div className="flex overflow-hidden rounded-t-2xl">
                         {(['deposit', 'withdraw'] as const).map((t) => (
                             <button
                                 key={t}
@@ -98,12 +125,15 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
                     {/* Content */}
                     <div className="p-6">
                         {tab === 'deposit'
-                            ? <DepositTab publicClient={publicClient} isConnected={isConnected} address={address} selectedVault={selectedVault} onVaultChange={setSelectedVault} />
-                            : <WithdrawTab selectedVault={selectedVault} />
+                            ? <DepositTab publicClient={publicClient} isConnected={isConnected} address={address} selectedVault={selectedVault} onVaultChange={setSelectedVault} networkConfig={networkConfig} />
+                            : <WithdrawTab selectedVault={selectedVault} networkConfig={networkConfig} />
                         }
                     </div>
                 </div>
             </div>
+
+            {/* Sidebar menu */}
+            <SidebarMenu open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         </div>
     )
 }

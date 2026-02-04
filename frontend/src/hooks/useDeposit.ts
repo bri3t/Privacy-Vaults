@@ -1,14 +1,19 @@
 import { useState, useCallback } from 'react'
 import { useSignTypedData } from 'wagmi'
 import { encodeAbiParameters, parseAbiParameters, type Hex, toHex, getAddress, parseAbiItem, createPublicClient, http, decodeEventLog } from 'viem'
-import { baseSepolia } from 'viem/chains'
+import { baseSepolia, base } from 'viem/chains'
 import { generateCommitment } from '../zk/commitment.ts'
 import { encodeNote } from '../zk/note.ts'
 import { hexToBytes } from '../zk/utils.ts'
 import {
   RECEIVE_WITH_AUTHORIZATION_TYPES,
-  USDC_DOMAIN,
 } from '../contracts/abis.ts'
+import type { NetworkConfig } from '../contracts/addresses.ts'
+
+const CHAIN_MAP: Record<number, typeof baseSepolia | typeof base> = {
+  [baseSepolia.id]: baseSepolia,
+  [base.id]: base,
+}
 
 const RELAYER_URL = import.meta.env.VITE_RELAYER_URL || 'http://localhost:3007'
 
@@ -32,9 +37,10 @@ interface useDepositProps {
   isConnected?: boolean
   vaultAddress: `0x${string}`
   denomination: bigint
+  networkConfig: NetworkConfig
 }
 
-export function useDeposit({ address, isConnected, vaultAddress, denomination }: useDepositProps) {
+export function useDeposit({ address, isConnected, vaultAddress, denomination, networkConfig }: useDepositProps) {
   const [state, setState] = useState<DepositState>({
     step: 'idle',
     note: null,
@@ -68,7 +74,7 @@ export function useDeposit({ address, isConnected, vaultAddress, denomination }:
       const nonce = toHex(nonceBytes)
 
       const signature: Hex = await signTypedDataAsync({
-        domain: USDC_DOMAIN,
+        domain: networkConfig.usdcDomain,
         types: RECEIVE_WITH_AUTHORIZATION_TYPES,
         primaryType: 'ReceiveWithAuthorization',
         message: {
@@ -129,8 +135,9 @@ export function useDeposit({ address, isConnected, vaultAddress, denomination }:
       const txHash = data.transactionHash as `0x${string}`
 
       // Fetch receipt via public RPC to decode the deposit event
+      const viemChain = CHAIN_MAP[networkConfig.chainId] ?? baseSepolia
       const publicClient = createPublicClient({
-        chain: baseSepolia,
+        chain: viemChain,
         transport: http(),
       })
       const receipt = await publicClient.getTransactionReceipt({ hash: txHash })
@@ -165,7 +172,7 @@ export function useDeposit({ address, isConnected, vaultAddress, denomination }:
       const message = err instanceof Error ? err.message : 'Unknown error'
       setState((s) => ({ ...s, step: 'error', error: message }))
     }
-  }, [signTypedDataAsync, isConnected, address, vaultAddress, denomination])
+  }, [signTypedDataAsync, isConnected, address, vaultAddress, denomination, networkConfig])
 
   const reset = useCallback(() => {
     setState({ step: 'idle', note: null, txHash: null, error: null })

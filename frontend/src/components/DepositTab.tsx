@@ -5,7 +5,7 @@ import { useUsdcBalance } from '../hooks/useUsdcBalance.ts'
 import { StatusIndicator } from './StatusIndicator.tsx'
 import { NoteModal } from './NoteModal.tsx'
 import { InsufficientBalanceModal } from './InsufficientBalanceModal.tsx'
-import { VAULTS, type VaultConfig } from '../contracts/addresses.ts'
+import type { VaultConfig, NetworkConfig } from '../contracts/addresses.ts'
 
 const DEPOSIT_STEPS = [
   { key: 'generating', label: 'Generating commitment' },
@@ -19,9 +19,10 @@ interface DepositTabProps {
   address: `0x${string}` | undefined
   selectedVault: VaultConfig
   onVaultChange: (v: VaultConfig) => void
+  networkConfig: NetworkConfig
 }
 
-export function DepositTab({ publicClient, isConnected, address, selectedVault, onVaultChange }: DepositTabProps) {
+export function DepositTab({ publicClient, isConnected, address, selectedVault, onVaultChange, networkConfig }: DepositTabProps) {
   const [showInsufficientModal, setShowInsufficientModal] = useState(false)
 
   const { step, note, txHash, error, deposit, reset } = useDeposit({
@@ -29,10 +30,11 @@ export function DepositTab({ publicClient, isConnected, address, selectedVault, 
     isConnected,
     vaultAddress: selectedVault.address,
     denomination: selectedVault.denomination,
+    networkConfig,
   })
   const isActive = step !== 'idle' && step !== 'done' && step !== 'error'
 
-  const { formattedBalance } = useUsdcBalance(publicClient, address as `0x${string}`)
+  const { formattedBalance } = useUsdcBalance(publicClient, address as `0x${string}`, networkConfig.usdcAddress)
 
   const handleDeposit = () => {
     const balance = parseFloat(formattedBalance || '0')
@@ -52,14 +54,14 @@ export function DepositTab({ publicClient, isConnected, address, selectedVault, 
 
       {/* Denomination selector */}
       <div className="flex gap-2">
-        {VAULTS.map((vault) => {
+        {networkConfig.vaults.map((vault) => {
           const isSelected = vault.denomination === selectedVault.denomination
           const isDisabled = !vault.enabled
           return (
             <button
               key={vault.label}
               onClick={() => !isDisabled && onVaultChange(vault)}
-              disabled={isDisabled || isActive}
+              disabled={isDisabled && isActive}
               className={`
                 flex-1 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all border
                 ${isSelected
@@ -142,7 +144,7 @@ export function DepositTab({ publicClient, isConnected, address, selectedVault, 
         <div className="text-xs text-zinc-500">
           Tx:{' '}
           <a
-            href={`https://sepolia.basescan.org/tx/${txHash}`}
+            href={`${networkConfig.explorerBaseUrl}/tx/${txHash}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-violet-400 hover:underline"

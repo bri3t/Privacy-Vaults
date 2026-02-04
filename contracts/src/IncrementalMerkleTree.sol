@@ -12,12 +12,7 @@ contract IncrementalMerkleTree {
 
     uint32 public immutable i_depth; // the depth of the Merkle tree, i.e. the number of levels in the tree
 
-    // the following variables are made public for easier testing and debugging and
-    // are not supposed to be accessed in regular code
-
-    // s_cachedSubtrees and roots could be bytes32[size], but using mappings makes it cheaper because
-    // it removes index range check on every interaction
-    mapping(uint256 => bytes32) public s_cachedSubtrees; // subtrees for already stored commitments
+    mapping(uint256 => bytes32) private s_cachedSubtrees; // subtrees for already stored commitments
     mapping(uint256 => bytes32) public s_roots; // ROOT_HISTORY_SIZE roots for the Merkle tree
     uint32 public constant ROOT_HISTORY_SIZE = 30; // the number of roots stored to compare proofs against
     uint32 public s_currentRootIndex = 0; // where in ROOT_HISTORY_SIZE the current root is stored in the roots array
@@ -135,15 +130,15 @@ contract IncrementalMerkleTree {
     /// @return The root of the given subtree
     function zeros(uint256 i) public pure returns (bytes32) {
         if (i == 0) return bytes32(0x2b0df951ef3a8bf2a23ac5acc4f59acca38c21ca13cbb63d412a8da53f58823b);
-        else if (i == 1) return bytes32( 0x0a1cc9dbf552c542379dee34a6616bd37fec1b0962c4fbe314a01cffac8308c3);
-        else if (i == 2) return bytes32( 0x0a6110e905ebe9c8a2a439acd710643468b9f51122440aadf091a4b6f167dba7);
-        else if (i == 3) return bytes32( 0x258e86d2ad936208dc4faebd94dcb560775b4a8a1d706f968387f99f03e9f1af);
-        else if (i == 4) return bytes32( 0x05721de377a87fe563e9012cbe21790b472bb4d430248322a7d55c340e99cc19);
-        else if (i == 5) return bytes32( 0x090bfc4cc3a2866a647c6fa30145eee92e99040f2993d11564bd465664203d05);
-        else if (i == 6) return bytes32( 0x24f174edec8ffbdea445407a17c7561917dab67efc2066314e02169a5f2bd176);
-        else if (i == 7) return bytes32( 0x0a3ecad8587b9b576b30d87b26e7df73a01e0cab533609f89133b635d47da8e6);
-        else if (i == 8) return bytes32( 0x2e90b8eab7dcc8a1fafa1010d660b076ddd9e5ebd03daed8c86b72ab7a283bdc);
-        else if (i == 9) return bytes32( 0x11a1e63d4bcdf3bbd6063b3ed48c4fb16c6a309b13e07580e3f839d499534282);
+        else if (i == 1) return bytes32(0x0a1cc9dbf552c542379dee34a6616bd37fec1b0962c4fbe314a01cffac8308c3);
+        else if (i == 2) return bytes32(0x0a6110e905ebe9c8a2a439acd710643468b9f51122440aadf091a4b6f167dba7);
+        else if (i == 3) return bytes32(0x258e86d2ad936208dc4faebd94dcb560775b4a8a1d706f968387f99f03e9f1af);
+        else if (i == 4) return bytes32(0x05721de377a87fe563e9012cbe21790b472bb4d430248322a7d55c340e99cc19);
+        else if (i == 5) return bytes32(0x090bfc4cc3a2866a647c6fa30145eee92e99040f2993d11564bd465664203d05);
+        else if (i == 6) return bytes32(0x24f174edec8ffbdea445407a17c7561917dab67efc2066314e02169a5f2bd176);
+        else if (i == 7) return bytes32(0x0a3ecad8587b9b576b30d87b26e7df73a01e0cab533609f89133b635d47da8e6);
+        else if (i == 8) return bytes32(0x2e90b8eab7dcc8a1fafa1010d660b076ddd9e5ebd03daed8c86b72ab7a283bdc);
+        else if (i == 9) return bytes32(0x11a1e63d4bcdf3bbd6063b3ed48c4fb16c6a309b13e07580e3f839d499534282);
         else if (i == 10) return bytes32(0x2c48eb427f0f886a60397a3fba5d15f6bd143ae5f174a10d22bde36a61101986);
         else if (i == 11) return bytes32(0x037cd7c51c74293d8ffb4f0e5f651b0c25c1dc2a353de5d50c9aa1b44bf9ae8a);
         else if (i == 12) return bytes32(0x158cfadd0317fc74ea136cf413ae55930ca54df49b188d9dd13f00577daa8087);

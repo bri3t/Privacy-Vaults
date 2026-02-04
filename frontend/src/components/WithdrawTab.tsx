@@ -9,7 +9,8 @@ import { useLiFiBridge } from '../hooks/useLiFiBridge.ts'
 import { useEnsResolution } from '../hooks/useEnsResolution.ts'
 import { useEnsWithdrawPreferences } from '../hooks/useEnsWithdrawPreferences.ts'
 import { SUPPORTED_CHAINS, COMMON_TOKENS, type ChainConfig, type TokenConfig } from '../constants/chains.ts'
-import type { VaultConfig } from '../contracts/addresses.ts'
+import type { VaultConfig, NetworkConfig } from '../contracts/addresses.ts'
+import { useNetworkMode } from '../contexts/NetworkModeContext.tsx'
 
 const WITHDRAW_STEPS = [
   { key: 'fetching-events', label: 'Fetching deposit events' },
@@ -26,7 +27,8 @@ const BRIDGE_STEPS = [
 const defaultChain = SUPPORTED_CHAINS.find((c) => c.chainId === 1) ?? SUPPORTED_CHAINS[0]
 const defaultToken = COMMON_TOKENS[defaultChain.chainId]?.find((t) => t.symbol === 'USDC') ?? COMMON_TOKENS[defaultChain.chainId]?.[0]
 
-export function WithdrawTab({ selectedVault }: { selectedVault: VaultConfig }) {
+export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: VaultConfig; networkConfig: NetworkConfig }) {
+  const { isTestnet } = useNetworkMode()
   const [noteInput, setNoteInput] = useState('')
   const [recipient, setRecipient] = useState('')
   const [crossChainEnabled, setCrossChainEnabled] = useState(false)
@@ -54,12 +56,14 @@ export function WithdrawTab({ selectedVault }: { selectedVault: VaultConfig }) {
   // Use resolved address for the actual withdrawal
   const effectiveRecipient = resolvedAddress || recipient
 
+  const effectiveCrossChain = crossChainEnabled && !isTestnet
+
   const { quote, isLoading: isLoadingQuote, error: quoteError } = useLiFiQuote({
     fromAmount: selectedVault.denomination.toString(),
     fromAddress: address || '',
     toChainId: selectedChain.chainId,
     toTokenAddress: selectedToken.address,
-    enabled: crossChainEnabled && isConnected && !!address,
+    enabled: effectiveCrossChain && isConnected && !!address,
   })
 
   const isActive =
@@ -159,18 +163,20 @@ export function WithdrawTab({ selectedVault }: { selectedVault: VaultConfig }) {
         )}
       </div>
 
-      {/* Cross-chain selector */}
-      <CrossChainSelector
-        enabled={crossChainEnabled}
-        onToggle={setCrossChainEnabled}
-        selectedChain={selectedChain}
-        onChainChange={setSelectedChain}
-        selectedToken={selectedToken}
-        onTokenChange={setSelectedToken}
-        quote={quote}
-        isLoadingQuote={isLoadingQuote}
-        quoteError={quoteError}
-      />
+      {/* Cross-chain selector (hidden in testnet mode) */}
+      {!isTestnet && (
+        <CrossChainSelector
+          enabled={crossChainEnabled}
+          onToggle={setCrossChainEnabled}
+          selectedChain={selectedChain}
+          onChainChange={setSelectedChain}
+          selectedToken={selectedToken}
+          onTokenChange={setSelectedToken}
+          quote={quote}
+          isLoadingQuote={isLoadingQuote}
+          quoteError={quoteError}
+        />
+      )}
 
       {/* Action button */}
       {isConnected ? (
@@ -216,11 +222,11 @@ export function WithdrawTab({ selectedVault }: { selectedVault: VaultConfig }) {
       )}
 
       {/* Success — base chain withdraw done */}
-      {step === 'done' && txHash && bridgeStep === 'idle' && !crossChainEnabled && (
+      {step === 'done' && txHash && bridgeStep === 'idle' && !effectiveCrossChain && (
         <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-4 text-green-300 text-sm">
           Withdrawal successful!{' '}
           <a
-            href={`https://sepolia.basescan.org/tx/${txHash}`}
+            href={`${networkConfig.explorerBaseUrl}/tx/${txHash}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-green-400 hover:underline font-medium"
@@ -231,7 +237,7 @@ export function WithdrawTab({ selectedVault }: { selectedVault: VaultConfig }) {
       )}
 
       {/* Success — withdraw done, trigger bridge */}
-      {step === 'done' && txHash && crossChainEnabled && bridgeStep === 'idle' && quote && (
+      {step === 'done' && txHash && effectiveCrossChain && bridgeStep === 'idle' && quote && (
         <div className="space-y-3">
           <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-4 text-green-300 text-sm">
             Step 1 complete — USDC withdrawn to your wallet on Base.

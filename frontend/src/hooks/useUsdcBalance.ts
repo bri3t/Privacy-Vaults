@@ -1,6 +1,5 @@
 import {useCallback ,useState, useEffect } from 'react'
 import {  formatUnits, Address } from 'viem'
-import { USDC_ADDRESS } from '../contracts/addresses.ts'
 
 const ERC20_BALANCE_ABI = [
   {
@@ -24,7 +23,7 @@ export type BalanceClient = {
 
 const BALANCE_REFRESH_INTERVAL_MS = 3000;
 
-export function useUsdcBalance(publicClient: any, owner: Address) {
+export function useUsdcBalance(publicClient: any, owner: Address, usdcAddress?: Address) {
   const [formattedBalance, setFormattedBalance] = useState("");
   const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
 
@@ -43,7 +42,7 @@ export function useUsdcBalance(publicClient: any, owner: Address) {
       }
 
       try {
-        const balance = await getUSDCBalance(publicClient as BalanceClient, owner);
+        const balance = await getUSDCBalance(publicClient as BalanceClient, owner, usdcAddress);
         setFormattedBalance(formatUnits(balance, 6));
       } catch (error) {
         console.error("Failed to check USDC balance", error);
@@ -53,7 +52,7 @@ export function useUsdcBalance(publicClient: any, owner: Address) {
         }
       }
     },
-    [owner, publicClient],
+    [owner, publicClient, usdcAddress],
   );
 
   useEffect(() => {
@@ -84,18 +83,11 @@ export function useUsdcBalance(publicClient: any, owner: Address) {
   };
 }
 
-export async function getUSDCBalance(client: BalanceClient, owner: Address): Promise<bigint> {
+export async function getUSDCBalance(client: BalanceClient, owner: Address, tokenAddress?: Address): Promise<bigint> {
   try {
-    const chainId = client.chain?.id;
-    if (!chainId) {
+    if (!tokenAddress) {
       return 0n;
     }
-
-    const tokenAddress = USDC_ADDRESS; //TODO: replace with dynamic resolution (depending of chainId)
-    // const tokenAddress = resolveUsdcAddress(chainId);
-    // if (!tokenAddress) {
-    //   return 0n;
-    // }
 
     const balance = await client.readContract({
       address: tokenAddress,

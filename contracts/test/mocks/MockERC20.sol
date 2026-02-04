@@ -20,7 +20,7 @@ contract MockUSDC is ERC20, EIP712 {
 
     event AuthorizationUsed(address indexed authorizer, bytes32 indexed nonce);
 
-    constructor(uint256 initialSupply) ERC20("USD Coin", "USDC") EIP712("USD Coin", "2") {
+    constructor(uint256 initialSupply) ERC20("USD", "USDC") EIP712("USD", "2") {
         _mint(msg.sender, initialSupply);
     }
 
