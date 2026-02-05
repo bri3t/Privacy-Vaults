@@ -1,5 +1,6 @@
 import type { VaultConfig, NetworkConfig } from '../contracts/addresses.ts'
 import { useVaultStats, formatRelativeTime } from '../hooks/useVaultStats.ts'
+import { DecryptedText } from './DecryptedText.tsx'
 
 interface StatsPanelProps {
   selectedVault: VaultConfig
@@ -15,7 +16,16 @@ export function StatsPanel({ selectedVault, networkConfig }: StatsPanelProps) {
     <div className="glass-card rounded-2xl shadow-xl shadow-black/10 p-5 flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center gap-2.5 mb-4">
-        <h2 className="text-base font-semibold text-[var(--text-primary)]">Statistics</h2>
+        <h2 className="text-base font-semibold text-[var(--text-primary)]">
+          <DecryptedText
+            text="Statistics"
+            animateOn="view"
+            sequential
+            speed={40}
+            className="text-[var(--text-primary)]"
+            encryptedClassName="text-cyan-400"
+          />
+        </h2>
         <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-white/10 text-[var(--text-secondary)] border border-white/15">
           {selectedVault.label}
         </span>

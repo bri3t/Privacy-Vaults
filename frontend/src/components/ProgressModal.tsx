@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Spinner } from './Spinner.tsx'
+import { DecryptedText } from './DecryptedText.tsx'
 
 interface Step {
   key: string
@@ -86,7 +87,14 @@ export function ProgressModal({
                   </svg>
                 </div>
                 <h3 className="text-xl font-bold text-[var(--text-primary)]">
-                  {successTitle || 'Success'}
+                  <DecryptedText
+                    text={successTitle || 'Success'}
+                    animateOn="view"
+                    sequential
+                    speed={30}
+                    className="text-[var(--text-primary)]"
+                    encryptedClassName="text-cyan-400"
+                  />
                 </h3>
               </div>
 

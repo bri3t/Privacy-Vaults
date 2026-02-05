@@ -3,6 +3,7 @@ import { Plasma } from '../components/Plasma.tsx'
 import { Spotlight } from '../components/Spotlight.tsx'
 import { FlipWords } from '../components/FlipWords.tsx'
 import { FlowVisualization } from '../components/flow/FlowVisualization.tsx'
+import { DecryptedText } from '../components/DecryptedText.tsx'
 
 interface LandingPageProps {
   onLaunch: () => void
@@ -29,11 +30,18 @@ export function LandingPage({ onLaunch }: LandingPageProps) {
       <nav className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl border-b border-[var(--border-subtle)]" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-page) 60%, transparent)' }}>
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <span className="text-lg font-bold text-[var(--text-primary)]">
-            Privacy Vault
+            <DecryptedText
+              text="Privacy Vault"
+              animateOn="view"
+              sequential
+              speed={40}
+              className="text-[var(--text-primary)]"
+              encryptedClassName="text-cyan-400"
+            />
           </span>
           <button
             onClick={onLaunch}
-            className="px-5 py-2 rounded-lg bg-white text-zinc-950 text-sm font-medium hover:bg-zinc-200 hover:shadow-lg hover:shadow-white/10 transition-all"
+            className="px-5 py-2 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:bg-[var(--accent-hover)] hover:shadow-lg hover:shadow-cyan-500/20 transition-all"
           >
             Launch App
           </button>
@@ -49,9 +57,16 @@ export function LandingPage({ onLaunch }: LandingPageProps) {
           className="text-center max-w-3xl"
         >
           <h1 className="text-5xl sm:text-7xl font-bold tracking-tight leading-tight">
-            <FlipWords words={['Private', 'Trustless', 'Gasless']} />
+            <FlipWords words={['Private', 'Gasless', 'Anonymous', 'Untraceable']} />
             <br />
-            <span className="text-[var(--text-primary)]">USDC Transfers</span>
+            <DecryptedText
+              text="USDC Transfers"
+              animateOn="view"
+              sequential
+              speed={35}
+              className="text-[var(--text-primary)]"
+              encryptedClassName="text-cyan-400"
+            />
           </h1>
           <p className="mt-6 text-lg sm:text-xl text-[var(--text-tertiary)] max-w-xl mx-auto">
             Break the on-chain link between sender and receiver. Deposit and withdraw
@@ -60,7 +75,7 @@ export function LandingPage({ onLaunch }: LandingPageProps) {
           <div className="mt-10 flex items-center justify-center gap-4">
             <button
               onClick={onLaunch}
-              className="px-8 py-3.5 rounded-xl bg-white text-zinc-950 font-semibold text-lg hover:bg-zinc-200 hover:shadow-xl hover:shadow-white/10 transition-all"
+              className="px-8 py-3.5 rounded-xl bg-[var(--accent)] text-white font-semibold text-lg hover:bg-[var(--accent-hover)] hover:shadow-xl hover:shadow-cyan-500/20 transition-all"
             >
               Launch App
             </button>
@@ -86,7 +101,14 @@ export function LandingPage({ onLaunch }: LandingPageProps) {
           custom={0}
           className="text-3xl sm:text-4xl font-bold text-center mb-4 px-6"
         >
-          How It Works
+          <DecryptedText
+            text="How It Works"
+            animateOn="view"
+            sequential
+            speed={40}
+            className="text-[var(--text-primary)]"
+            encryptedClassName="text-cyan-400"
+          />
         </motion.h2>
         <FlowVisualization onLaunch={onLaunch} />
       </section>

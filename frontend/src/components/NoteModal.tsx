@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { DecryptedText } from './DecryptedText.tsx'
 
 interface NoteModalProps {
   note: string
@@ -46,7 +47,16 @@ export function NoteModal({ note, onClose }: NoteModalProps) {
           transition={{ duration: 0.2, ease: 'easeOut' }}
           className="relative bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl shadow-black/20 backdrop-blur-xl"
         >
-          <h3 className="text-xl font-bold text-[var(--text-primary)]">Deposit Successful</h3>
+          <h3 className="text-xl font-bold text-[var(--text-primary)]">
+            <DecryptedText
+              text="Deposit Successful"
+              animateOn="view"
+              sequential
+              speed={30}
+              className="text-[var(--text-primary)]"
+              encryptedClassName="text-cyan-400"
+            />
+          </h3>
 
           <p className="text-sm text-[var(--text-tertiary)]">
             Your withdrawal note is below. This is the only way to recover your

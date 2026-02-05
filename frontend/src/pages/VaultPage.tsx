@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 
 import { AnimatedBackground } from '../components/AnimatedBackground.tsx'
+import { DecryptedText } from '../components/DecryptedText.tsx'
 import { WithdrawTab } from '../components/WithdrawTab.tsx'
 import { DepositTab } from '../components/DepositTab.tsx'
 import { SidebarMenu } from '../components/SidebarMenu.tsx'
@@ -75,7 +76,14 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
                     onClick={onBack}
                     className="text-lg font-bold text-[var(--text-primary)] hover:opacity-80 transition-opacity"
                 >
-                    Privacy Vault
+                    <DecryptedText
+                        text="Privacy Vault"
+                        animateOn="view"
+                        sequential
+                        speed={40}
+                        className="text-[var(--text-primary)]"
+                        encryptedClassName="text-cyan-400"
+                    />
                 </button>
 
                 <div className="flex items-center gap-2">
