@@ -3,9 +3,8 @@ import { useAccount } from 'wagmi'
 import { OpenfortButton } from '@openfort/react'
 import { useWithdraw } from '../hooks/useWithdraw.ts'
 import { useNoteMetadata } from '../hooks/useNoteMetadata.ts'
-import { StatusIndicator } from './StatusIndicator.tsx'
+import { ProgressModal } from './ProgressModal.tsx'
 import { CrossChainSelector } from './CrossChainSelector.tsx'
-import { WithdrawSuccessModal } from './WithdrawSuccessModal.tsx'
 import { useLiFiQuote } from '../hooks/useLiFiQuote.ts'
 import { useLiFiBridge } from '../hooks/useLiFiBridge.ts'
 import { useEnsResolution } from '../hooks/useEnsResolution.ts'
@@ -41,8 +40,7 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
   const { step: bridgeStep, txHash: bridgeTxHash, error: bridgeError, bridge, reset: bridgeReset } = useLiFiBridge()
   const noteMetadata = useNoteMetadata(noteInput, selectedVault.address, selectedVault.denomination, selectedVault.displayAmount)
 
-  // Success modal state — snapshot of data at withdrawal time
-  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  // Snapshot recipient/ensName when withdraw starts (for success display)
   const successSnapshot = useRef<{ recipient: string; ensName: string | null }>({ recipient: '', ensName: null })
 
   // ENS resolution
@@ -67,11 +65,9 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
 
   const effectiveCrossChain = crossChainEnabled && !isTestnet
 
-  // Show success modal and clear form when non-cross-chain withdraw completes
+  // Clear form when non-cross-chain withdraw completes
   useEffect(() => {
     if (step === 'done' && txHash && !effectiveCrossChain) {
-      successSnapshot.current = { recipient: effectiveRecipient, ensName: ensName }
-      setShowSuccessModal(true)
       setNoteInput('')
       setRecipient('')
     }
@@ -102,6 +98,8 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
 
   const handleWithdraw = () => {
     if (!noteInput.trim() || !isRecipientValid) return
+    // Snapshot recipient/ensName for success display
+    successSnapshot.current = { recipient: effectiveRecipient, ensName: ensName }
     withdraw(noteInput.trim(), effectiveRecipient.trim())
   }
 
@@ -262,48 +260,40 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
           </div>
         )}
 
-        {/* Withdraw progress */}
-        {step !== 'idle' && (
-          <StatusIndicator
-            steps={WITHDRAW_STEPS}
-            currentStep={step}
-            error={error}
-          />
-        )}
-
-        {/* Bridge progress (step 2 of cross-chain) */}
-        {bridgeStep !== 'idle' && (
-          <StatusIndicator
-            steps={BRIDGE_STEPS}
-            currentStep={bridgeStep}
-            error={bridgeError}
-          />
-        )}
-
-        {/* Error retry */}
-        {(step === 'error' || bridgeStep === 'error') && (
-          <button
-            onClick={() => { reset(); bridgeReset(); }}
-            className="w-full py-2.5 px-4 rounded-xl bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] text-sm font-medium border border-[var(--border-primary)] transition-colors"
-          >
-            Try again
-          </button>
-        )}
       </div>
 
-      {/* Success modal — base chain withdraw done */}
-      {showSuccessModal && txHash && (
-        <WithdrawSuccessModal
-          amount={selectedVault.displayAmount.toString()}
-          network={isTestnet ? 'Base Sepolia' : 'Base'}
-          token="USDC"
-          recipient={successSnapshot.current.recipient}
-          ensName={successSnapshot.current.ensName}
-          txHash={txHash}
-          explorerUrl={networkConfig.explorerBaseUrl}
-          onClose={() => { setShowSuccessModal(false); reset(); }}
-        />
-      )}
+      {/* Withdraw progress modal (stays open on success for non-cross-chain) */}
+      <ProgressModal
+        isOpen={step !== 'idle' && (effectiveCrossChain ? step !== 'done' : true)}
+        title={`Withdrawing ${selectedVault.label}`}
+        steps={WITHDRAW_STEPS}
+        currentStep={step}
+        error={error}
+        txHash={txHash}
+        explorerUrl={networkConfig.explorerBaseUrl}
+        onRetry={reset}
+        onClose={reset}
+        successTitle="Withdrawal Successful"
+        successDetails={!effectiveCrossChain ? {
+          amount: selectedVault.displayAmount.toString(),
+          network: isTestnet ? 'Base Sepolia' : 'Base',
+          token: 'USDC',
+          recipient: successSnapshot.current.recipient,
+          ensName: successSnapshot.current.ensName,
+        } : undefined}
+        onDone={reset}
+      />
+
+      {/* Bridge progress modal */}
+      <ProgressModal
+        isOpen={bridgeStep !== 'idle' && bridgeStep !== 'complete'}
+        title={`Bridging to ${selectedChain.name}`}
+        steps={BRIDGE_STEPS}
+        currentStep={bridgeStep}
+        error={bridgeError}
+        onRetry={bridgeReset}
+        onClose={bridgeReset}
+      />
 
       {/* Success — withdraw done, trigger bridge */}
       {step === 'done' && txHash && effectiveCrossChain && bridgeStep === 'idle' && quote && (
