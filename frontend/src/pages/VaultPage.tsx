@@ -11,9 +11,20 @@ import { useUser, useWallets, OpenfortButton } from "@openfort/react";
 import { useAccount, useSwitchChain } from "wagmi";
 import { createPublicClient, http } from "viem";
 import { baseSepolia, base } from "viem/chains";
-import { DEFAULT_VAULT, type VaultConfig } from '../contracts/addresses.ts'
+import { NETWORK_CONFIGS, type VaultConfig } from '../contracts/addresses.ts'
 import { useNetworkConfig } from '../hooks/useNetworkConfig.ts'
-import { useNetworkMode } from '../contexts/NetworkModeContext.tsx'
+import { useNetworkMode, type NetworkMode } from '../contexts/NetworkModeContext.tsx'
+
+// Get initial vault based on stored network mode
+function getInitialVault(): VaultConfig {
+  let mode: NetworkMode = 'testnet'
+  try {
+    const stored = localStorage.getItem('privacy-vault-network-mode')
+    if (stored === 'mainnet' || stored === 'testnet') mode = stored
+  } catch {}
+  const config = NETWORK_CONFIGS[mode]
+  return config.vaults.find((v) => v.enabled) ?? config.vaults[0]
+}
 
 
 type Tab = 'deposit' | 'withdraw'
@@ -32,7 +43,7 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
     const { mode, isMainnet } = useNetworkMode()
 
     const [tab, setTab] = useState<Tab>('deposit')
-    const [selectedVault, setSelectedVault] = useState<VaultConfig>(DEFAULT_VAULT)
+    const [selectedVault, setSelectedVault] = useState<VaultConfig>(getInitialVault)
     const [sidebarOpen, setSidebarOpen] = useState(false)
 
     const viemChain = CHAIN_MAP[networkConfig.chainId] ?? baseSepolia

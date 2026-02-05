@@ -31,16 +31,16 @@ function formatRelativeTime(timestampSec: number): string {
   return `${days} day${days !== 1 ? 's' : ''} ago`
 }
 
-export function useVaultStats(vaultAddress: string | undefined): VaultStats {
+export function useVaultStats(vaultAddress: string | undefined, chainId: number): VaultStats {
   const [deposits, setDeposits] = useState<DepositEntry[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchStats = useCallback(async (address: string) => {
+  const fetchStats = useCallback(async (address: string, chain: number) => {
     setIsLoading(true)
     setError(null)
     try {
-      const res = await fetch(`${RELAYER_URL}/api/vault/stats?vaultAddress=${address}`)
+      const res = await fetch(`${RELAYER_URL}/api/vault/stats?vaultAddress=${address}&chainId=${chain}`)
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         throw new Error(body.error || `HTTP ${res.status}`)
@@ -57,8 +57,10 @@ export function useVaultStats(vaultAddress: string | undefined): VaultStats {
 
   useEffect(() => {
     if (!vaultAddress) return
-    fetchStats(vaultAddress)
-  }, [vaultAddress, fetchStats])
+    // Reset deposits when vault or chain changes
+    setDeposits([])
+    fetchStats(vaultAddress, chainId)
+  }, [vaultAddress, chainId, fetchStats])
 
   return {
     deposits,

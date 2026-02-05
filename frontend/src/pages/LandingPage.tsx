@@ -112,7 +112,7 @@ export function LandingPage({ onLaunch }: LandingPageProps) {
             encryptedClassName="text-[var(--accent)]"
           />
         </motion.h2>
-        <FlowVisualization onLaunch={onLaunch} />
+        <FlowVisualization />
       </section>
 
       {/* Features */}

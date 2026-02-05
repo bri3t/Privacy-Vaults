@@ -8,7 +8,7 @@ interface StatsPanelProps {
 }
 
 export function StatsPanel({ selectedVault, networkConfig }: StatsPanelProps) {
-  const { deposits, totalDeposits, isLoading, error } = useVaultStats(selectedVault.address)
+  const { deposits, totalDeposits, isLoading, error } = useVaultStats(selectedVault.address, networkConfig.chainId)
 
   const latest10 = [...deposits].reverse().slice(0, 10)
 

@@ -2,7 +2,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 interface FlowOverlayProps {
   activeStep: number
-  onLaunch: () => void
 }
 
 const stages = [
@@ -28,7 +27,7 @@ const stages = [
   },
 ]
 
-export function FlowOverlay({ activeStep, onLaunch }: FlowOverlayProps) {
+export function FlowOverlay({ activeStep }: FlowOverlayProps) {
   return (
     <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-start pt-8 px-8">
       {/* Stage title + description */}
@@ -53,24 +52,6 @@ export function FlowOverlay({ activeStep, onLaunch }: FlowOverlayProps) {
         </motion.div>
       </AnimatePresence>
 
-      {/* CTA at the last step */}
-      <AnimatePresence>
-        {activeStep === 4 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="mt-35 pointer-events-auto"
-          >
-            <button
-              onClick={onLaunch}
-              className="px-8 py-3.5 rounded-xl bg-white text-zinc-950 font-semibold text-lg hover:bg-zinc-200 hover:shadow-xl hover:shadow-white/10 transition-all"
-            >
-              Launch App
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }

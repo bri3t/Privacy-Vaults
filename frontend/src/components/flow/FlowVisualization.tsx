@@ -8,11 +8,7 @@ import { ZKProofAnimation } from './ZKProofAnimation.tsx'
 
 const STAGE_LABELS = ['Deposit', 'Commitment', 'Merkle Tree', 'ZK Proof', 'Withdraw']
 
-interface FlowVisualizationProps {
-  onLaunch: () => void
-}
-
-export function FlowVisualization({ onLaunch }: FlowVisualizationProps) {
+export function FlowVisualization() {
   const [activeStep, setActiveStep] = useState(0)
   const [progress, setProgress] = useState(0)
   const rafRef = useRef<number>(0)
@@ -77,7 +73,7 @@ export function FlowVisualization({ onLaunch }: FlowVisualizationProps) {
       <ZKProofAnimation visible={isZKProofStage} />
 
       {/* HTML overlay */}
-      <FlowOverlay activeStep={activeStep} onLaunch={onLaunch} />
+      <FlowOverlay activeStep={activeStep} />
 
       {/* Bottom controls */}
       <div className="absolute bottom-6 inset-x-0 flex flex-col items-center gap-4">
