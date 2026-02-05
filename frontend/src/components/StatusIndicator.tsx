@@ -37,7 +37,7 @@ export function StatusIndicator({
         return (
           <div key={step.key} className="flex items-center gap-2.5 text-sm py-0.5">
             {status === 'done' && (
-              <span className="text-green-400 w-5 text-center text-xs">&#10003;</span>
+              <span className="text-cyan-400 w-5 text-center text-xs">&#10003;</span>
             )}
             {status === 'active' && (
               <span className="w-5 flex justify-center">

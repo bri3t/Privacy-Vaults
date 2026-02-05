@@ -74,14 +74,14 @@ export function ProgressModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className={`relative bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl max-w-sm w-full p-6 space-y-5 backdrop-blur-xl ${showSuccess ? 'shadow-2xl shadow-green-500/10' : 'shadow-2xl shadow-black/20'}`}
+          className={`relative bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl max-w-sm w-full p-6 space-y-5 backdrop-blur-xl ${showSuccess ? 'shadow-2xl shadow-cyan-500/10' : 'shadow-2xl shadow-black/20'}`}
         >
           {showSuccess ? (
             <>
               {/* Success Header */}
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <div className="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
@@ -143,7 +143,7 @@ export function ProgressModal({
               {/* Done button */}
               <button
                 onClick={onDone}
-                className="w-full py-3 px-4 rounded-xl bg-white text-zinc-950 font-semibold hover:bg-zinc-200 hover:shadow-lg hover:shadow-white/10 transition-all"
+                className="w-full py-3 px-4 rounded-xl bg-[var(--accent)] text-white font-semibold hover:bg-[var(--accent-hover)] hover:shadow-lg hover:shadow-cyan-500/20 transition-all"
               >
                 Done
               </button>
@@ -172,7 +172,7 @@ export function ProgressModal({
                   return (
                     <div key={step.key} className="flex items-center gap-3 text-sm py-1">
                       {status === 'done' && (
-                        <span className="text-green-400 w-5 text-center text-sm">&#10003;</span>
+                        <span className="text-cyan-400 w-5 text-center text-sm">&#10003;</span>
                       )}
                       {status === 'active' && (
                         <span className="w-5 flex justify-center">
@@ -231,7 +231,7 @@ export function ProgressModal({
                   {onRetry && (
                     <button
                       onClick={onRetry}
-                      className="flex-1 py-2.5 px-4 rounded-xl bg-white text-zinc-950 font-semibold hover:bg-zinc-200 transition-colors"
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-[var(--accent)] text-white font-semibold hover:bg-[var(--accent-hover)] transition-colors"
                     >
                       Try Again
                     </button>

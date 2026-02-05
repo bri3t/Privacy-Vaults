@@ -56,7 +56,7 @@ export function StatsPanel({ selectedVault, networkConfig }: StatsPanelProps) {
               return d ? (
                 <div key={d.leafIndex} className="py-1 px-2 rounded bg-[var(--bg-surface)]">
                   <span className="text-xs font-mono text-[var(--text-tertiary)]">{d.leafIndex}.</span>{' '}
-                  <span className="text-xs text-green-400">{formatRelativeTime(d.timestamp)}</span>
+                  <span className="text-xs text-cyan-400">{formatRelativeTime(d.timestamp)}</span>
                 </div>
               ) : (
                 <div key={`empty-${i}`} className="py-1 px-2" />

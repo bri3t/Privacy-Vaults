@@ -89,7 +89,7 @@ export function NoteModal({ note, onClose }: NoteModalProps) {
           <button
             onClick={onClose}
             disabled={!backedUp}
-            className="w-full py-3 px-4 rounded-xl bg-white text-zinc-950 font-semibold hover:bg-zinc-200 hover:shadow-lg hover:shadow-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            className="w-full py-3 px-4 rounded-xl bg-[var(--accent)] text-white font-semibold hover:bg-[var(--accent-hover)] hover:shadow-lg hover:shadow-cyan-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
             Done
           </button>

@@ -250,7 +250,7 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
           <button
             onClick={handleWithdraw}
             disabled={isActive || isBridging || !noteInput.trim() || !isRecipientValid}
-            className="w-full py-3.5 px-4 rounded-xl bg-white text-zinc-950 font-semibold hover:bg-zinc-200 hover:shadow-lg hover:shadow-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="w-full py-3.5 px-4 rounded-xl bg-[var(--accent)] text-white font-semibold hover:bg-[var(--accent-hover)] hover:shadow-lg hover:shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             Withdraw {selectedVault.label}
           </button>
@@ -298,12 +298,12 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
       {/* Success — withdraw done, trigger bridge */}
       {step === 'done' && txHash && effectiveCrossChain && bridgeStep === 'idle' && quote && (
         <div className="space-y-3">
-          <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-4 text-green-300 text-sm">
+          <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/20 p-4 text-cyan-300 text-sm">
             Step 1 complete — USDC withdrawn to your wallet on Base.
           </div>
           <button
             onClick={() => bridge(quote)}
-            className="w-full py-3.5 px-4 rounded-xl bg-white text-zinc-950 font-semibold hover:bg-zinc-200 hover:shadow-lg hover:shadow-white/10 transition-all"
+            className="w-full py-3.5 px-4 rounded-xl bg-[var(--accent)] text-white font-semibold hover:bg-[var(--accent-hover)] hover:shadow-lg hover:shadow-cyan-500/20 transition-all"
           >
             Bridge to {selectedChain.name}
           </button>
@@ -312,13 +312,13 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
 
       {/* Bridge complete */}
       {bridgeStep === 'complete' && bridgeTxHash && (
-        <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-4 text-green-300 text-sm">
+        <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/20 p-4 text-cyan-300 text-sm">
           Bridge complete! Funds sent to {selectedChain.name}.{' '}
           <a
             href={`${selectedChain.explorerUrl}/tx/${bridgeTxHash}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-green-400 hover:underline font-medium"
+            className="text-cyan-400 hover:underline font-medium"
           >
             View transaction
           </a>
