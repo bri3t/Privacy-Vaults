@@ -71,7 +71,7 @@ export function EnsPreferencesPanel({ ensName, onClose }: EnsPreferencesPanelPro
         </div>
 
         <p className="text-xs text-[var(--text-tertiary)]">
-          Set your preferred withdrawal chain and token on <span className="text-amber-500">{ensName}</span>.
+          Set your preferred withdrawal chain and token on <span className="text-[var(--text-primary)] font-medium">{ensName}</span>.
           Senders who withdraw to your ENS name will see these preferences auto-populated.
         </p>
 
@@ -89,7 +89,7 @@ export function EnsPreferencesPanel({ ensName, onClose }: EnsPreferencesPanelPro
                 }}
                 className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-all border ${
                   selectedChain.chainId === chain.chainId
-                    ? 'bg-amber-500/20 border-amber-500/50 text-[var(--text-primary)]'
+                    ? 'bg-white/10 border-white/25 text-[var(--text-primary)]'
                     : 'bg-[var(--bg-surface)] border-[var(--border-primary)] text-[var(--text-tertiary)] hover:border-[var(--text-muted)]'
                 }`}
               >
@@ -109,7 +109,7 @@ export function EnsPreferencesPanel({ ensName, onClose }: EnsPreferencesPanelPro
                 onClick={() => setSelectedToken(token)}
                 className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all border ${
                   selectedToken.symbol === token.symbol
-                    ? 'bg-amber-500/20 border-amber-500/50 text-[var(--text-primary)]'
+                    ? 'bg-white/10 border-white/25 text-[var(--text-primary)]'
                     : 'bg-[var(--bg-surface)] border-[var(--border-primary)] text-[var(--text-tertiary)] hover:border-[var(--text-muted)]'
                 }`}
               >
@@ -124,14 +124,14 @@ export function EnsPreferencesPanel({ ensName, onClose }: EnsPreferencesPanelPro
         </p>
 
         {isSuccess ? (
-          <div className="text-xs text-green-400 text-center py-2">
+          <div className="text-xs text-cyan-400 text-center py-2">
             Preferences saved to ENS!
           </div>
         ) : (
           <button
             onClick={handleSave}
             disabled={isPending || isConfirming || !isConnected}
-            className="w-full py-3 rounded-xl bg-amber-500 text-white font-semibold text-sm hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="w-full py-3 rounded-xl bg-[var(--accent)] text-[var(--bg-deep)] font-semibold text-sm hover:bg-[var(--accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {isPending || isConfirming ? 'Confirming...' : 'Save to ENS'}
           </button>

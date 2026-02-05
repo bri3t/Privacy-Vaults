@@ -13,7 +13,7 @@ interface FlowSceneProps {
 
 // Camera positions for each stage
 const cameraPositions: [number, number, number][] = [
-  [0, 0, 8],     // idle / deposit
+  [3, 5, 16],    // deposit (wide scene with user, pool, gears)
   [0, 0, 7],     // commitment
   [0, 0.5, 10],  // merkle tree (pull back)
   [0, 0, 7],     // proof
@@ -21,7 +21,7 @@ const cameraPositions: [number, number, number][] = [
 ]
 
 const cameraTargets: [number, number, number][] = [
-  [0, 0, 0],
+  [0, 0.5, 0],   // deposit (look at pool center)
   [0, 0, 0],
   [0, 1, 0],
   [0, 0, 0],
@@ -81,9 +81,9 @@ function BackgroundParticles() {
       </bufferGeometry>
       <pointsMaterial
         size={0.02}
-        color="#8b5cf6"
+        color="#00e5cc"
         transparent
-        opacity={0.4}
+        opacity={0.25}
         sizeAttenuation
       />
     </points>
@@ -96,9 +96,12 @@ export function FlowScene({ progress }: FlowSceneProps) {
       <CameraRig progress={progress} />
 
       {/* Lighting */}
-      <ambientLight intensity={0.3} />
-      <pointLight position={[5, 5, 5]} intensity={0.8} color="#8b5cf6" />
-      <pointLight position={[-5, -3, 3]} intensity={0.5} color="#22d3ee" />
+      <ambientLight intensity={0.8} color="#ffffff" />
+      <pointLight position={[5, 5, 5]} intensity={1.2} color="#ffffff" />
+      <pointLight position={[-8, 4, 5]} intensity={0.6} color="#3B82F6" />
+      <pointLight position={[8, 3, -5]} intensity={0.6} color="#00e5cc" />
+      <pointLight position={[0, 2, 8]} intensity={0.8} color="#ffffff" />
+      <hemisphereLight color="#ffffff" groundColor="#00e5cc" intensity={0.3} />
 
       <BackgroundParticles />
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../lib/utils.ts'
+import { DecryptedText } from './DecryptedText.tsx'
 
 interface FlipWordsProps {
   words: string[]
@@ -22,18 +22,15 @@ export function FlipWords({ words, duration = 3000, className }: FlipWordsProps)
 
   return (
     <span className={cn('inline-block relative', className)}>
-      <AnimatePresence mode="wait">
-        <motion.span
-          key={words[index]}
-          initial={{ opacity: 0, y: 10, filter: 'blur(8px)' }}
-          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          exit={{ opacity: 0, y: -10, filter: 'blur(8px)' }}
-          transition={{ duration: 0.4, ease: 'easeInOut' }}
-          className="inline-block text-amber-500"
-        >
-          {words[index]}
-        </motion.span>
-      </AnimatePresence>
+      <DecryptedText
+        key={index}
+        text={words[index]}
+        animateOn="view"
+        sequential
+        speed={60}
+        className="text-[var(--text-primary)]"
+        encryptedClassName="text-[var(--accent)]"
+      />
     </span>
   )
 }

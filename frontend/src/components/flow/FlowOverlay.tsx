@@ -8,7 +8,7 @@ interface FlowOverlayProps {
 const stages = [
   {
     title: 'Deposit',
-    description: 'Deposit USDC into the privacy vault. Your funds enter a shared pool — anonymous from the start.',
+    description: 'USDC flows from your wallet into the privacy vault, where it\'s deployed into yield strategies.',
   },
   {
     title: 'Commitment',
@@ -24,7 +24,7 @@ const stages = [
   },
   {
     title: 'Withdraw',
-    description: 'Withdraw to any address. No on-chain link to the original depositor. Complete privacy.',
+    description: 'Withdraw to any address — funds exit strategies, leave the vault, and reach the recipient with no on-chain link.',
   },
 ]
 
@@ -41,7 +41,7 @@ export function FlowOverlay({ activeStep, onLaunch }: FlowOverlayProps) {
           transition={{ duration: 0.4, ease: 'easeOut' }}
           className="text-center max-w-lg mx-auto"
         >
-          <p className="text-xs font-medium tracking-widest uppercase text-amber-500 mb-3">
+          <p className="text-xs font-medium tracking-widest uppercase text-[var(--text-tertiary)] mb-3">
             Step {activeStep + 1} of 5
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-[var(--text-primary)] mb-4">
@@ -60,11 +60,11 @@ export function FlowOverlay({ activeStep, onLaunch }: FlowOverlayProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="mt-6 pointer-events-auto"
+            className="mt-35 pointer-events-auto"
           >
             <button
               onClick={onLaunch}
-              className="px-8 py-3.5 rounded-xl bg-amber-500 text-white font-semibold text-lg hover:bg-amber-400 hover:shadow-xl hover:shadow-amber-500/25 transition-all"
+              className="px-8 py-3.5 rounded-xl bg-white text-zinc-950 font-semibold text-lg hover:bg-zinc-200 hover:shadow-xl hover:shadow-white/10 transition-all"
             >
               Launch App
             </button>

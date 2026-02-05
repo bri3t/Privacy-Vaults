@@ -70,7 +70,7 @@ export function CrossChainSelector({
         <button
           onClick={() => onToggle(!enabled)}
           className={`relative w-11 h-6 rounded-full transition-colors ${
-            enabled ? 'bg-amber-500' : 'bg-[var(--bg-hover)]'
+            enabled ? 'bg-zinc-300' : 'bg-[var(--bg-hover)]'
           }`}
         >
           <span
@@ -106,7 +106,7 @@ export function CrossChainSelector({
                       onClick={() => handleChainSelect(chain)}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
                         selectedChain.chainId === chain.chainId
-                          ? 'bg-amber-500/15 text-[var(--text-primary)]'
+                          ? 'bg-white/10 text-[var(--text-primary)]'
                           : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]'
                       }`}
                     >
@@ -140,7 +140,7 @@ export function CrossChainSelector({
                       onClick={() => handleTokenSelect(token)}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
                         selectedToken.symbol === token.symbol
-                          ? 'bg-amber-500/15 text-[var(--text-primary)]'
+                          ? 'bg-white/10 text-[var(--text-primary)]'
                           : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]'
                       }`}
                     >
@@ -157,7 +157,7 @@ export function CrossChainSelector({
             <div className="mt-1">
               {isLoadingQuote && (
                 <div className="flex items-center gap-2 text-[var(--text-muted)]">
-                  <span className="inline-block w-3 h-3 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
+                  <span className="inline-block w-3 h-3 rounded-full border-2 border-zinc-400 border-t-transparent animate-spin" />
                   <span className="text-sm">Fetching quote...</span>
                 </div>
               )}

@@ -3,7 +3,7 @@ import { OpenfortButton } from "@openfort/react";
 import { useDeposit } from '../hooks/useDeposit.ts'
 import { useUsdcBalance } from '../hooks/useUsdcBalance.ts'
 import { useYieldApy } from '../hooks/useYieldApy.ts'
-import { StatusIndicator } from './StatusIndicator.tsx'
+import { ProgressModal } from './ProgressModal.tsx'
 import { NoteModal } from './NoteModal.tsx'
 import { InsufficientBalanceModal } from './InsufficientBalanceModal.tsx'
 import type { VaultConfig, NetworkConfig } from '../contracts/addresses.ts'
@@ -54,7 +54,7 @@ export function DepositTab({ publicClient, isConnected, address, selectedVault, 
       {/* Form fields */}
       <div className="space-y-5">
         <p className="text-[var(--text-tertiary)] text-sm leading-relaxed">
-          Deposit <span className="text-[var(--text-primary)] font-medium">{selectedVault.label}</span> into the Privacy Vault.
+          Deposit <span className="text-[var(--text-primary)] font-medium">{selectedVault.label}</span> into the Privacy Vaults.
           You will receive a secret note that can be used to withdraw later.
         </p>
 
@@ -70,7 +70,7 @@ export function DepositTab({ publicClient, isConnected, address, selectedVault, 
                 href="https://faucet.circle.com/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-amber-500 hover:text-amber-400 transition-colors"
+                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
               >
                 Get testnet USDC
               </a>
@@ -91,7 +91,7 @@ export function DepositTab({ publicClient, isConnected, address, selectedVault, 
                 className={`
                   flex-1 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all border
                   ${isSelected
-                    ? 'bg-amber-500/15 border-amber-500/50 text-[var(--text-primary)] shadow-sm shadow-amber-500/10'
+                    ? 'bg-white/10 border-white/25 text-[var(--text-primary)] shadow-sm shadow-white/5'
                     : isDisabled
                       ? 'bg-[var(--bg-surface)] border-[var(--border-primary)] text-[var(--text-muted)] cursor-not-allowed'
                       : 'bg-[var(--bg-surface)] border-[var(--border-primary)] text-[var(--text-tertiary)] hover:border-[var(--text-muted)] hover:text-[var(--text-secondary)]'
@@ -99,7 +99,6 @@ export function DepositTab({ publicClient, isConnected, address, selectedVault, 
                 `}
               >
                 {vault.displayAmount}
-                {isDisabled && <span className="block text-[10px] font-normal text-[var(--text-muted)]">Soon</span>}
               </button>
             )
           })}
@@ -110,7 +109,7 @@ export function DepositTab({ publicClient, isConnected, address, selectedVault, 
           <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <p className="text-xs text-emerald-400 font-medium">
-              Earning yield via Aave V3 + Morpho while deposited
+              Earning yield via Aave + Morpho while deposited
               {blendedApy !== null && <span className="text-emerald-300"> · est. {blendedApy.toFixed(2)}% APY</span>}
             </p>
           </div>
@@ -123,7 +122,7 @@ export function DepositTab({ publicClient, isConnected, address, selectedVault, 
           <button
             onClick={handleDeposit}
             disabled={isActive}
-            className="w-full py-3.5 px-4 rounded-xl bg-amber-500 text-white font-semibold hover:bg-amber-400 hover:shadow-lg hover:shadow-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="w-full py-3.5 px-4 rounded-xl bg-[var(--accent)] text-[var(--bg-deep)] font-semibold hover:bg-[var(--accent-hover)] hover:shadow-lg hover:shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             Deposit {selectedVault.label}
           </button>
@@ -133,40 +132,20 @@ export function DepositTab({ publicClient, isConnected, address, selectedVault, 
           </div>
         )}
 
-        {/* Progress */}
-        {step !== 'idle' && (
-          <StatusIndicator
-            steps={DEPOSIT_STEPS}
-            currentStep={step}
-            error={error}
-          />
-        )}
-
-        {/* Error retry */}
-        {step === 'error' && (
-          <button
-            onClick={reset}
-            className="w-full py-2.5 px-4 rounded-xl bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] text-sm font-medium border border-[var(--border-primary)] transition-colors"
-          >
-            Try again
-          </button>
-        )}
-
-        {/* Tx link */}
-        {txHash && (
-          <div className="text-xs text-[var(--text-muted)]">
-            Tx:{' '}
-            <a
-              href={`${networkConfig.explorerBaseUrl}/tx/${txHash}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-amber-500 hover:underline"
-            >
-              {txHash.slice(0, 10)}...{txHash.slice(-8)}
-            </a>
-          </div>
-        )}
       </div>
+
+      {/* Progress modal */}
+      <ProgressModal
+        isOpen={step !== 'idle' && step !== 'done'}
+        title={`Depositing ${selectedVault.label}`}
+        steps={DEPOSIT_STEPS}
+        currentStep={step}
+        error={error}
+        txHash={txHash}
+        explorerUrl={networkConfig.explorerBaseUrl}
+        onRetry={reset}
+        onClose={reset}
+      />
 
       {/* Note modal */}
       {step === 'done' && note && <NoteModal note={note} onClose={reset} />}

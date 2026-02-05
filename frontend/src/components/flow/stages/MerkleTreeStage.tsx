@@ -120,7 +120,7 @@ export function MerkleTreeStage({ progress }: StageProps) {
             key={`edge-${i}`}
             from={[nodeA.x, nodeA.y, 0]}
             to={[nodeB.x, nodeB.y, 0]}
-            color={highlighted ? '#8b5cf6' : '#3f3f46'}
+            color={highlighted ? '#d4d4d8' : '#3f3f46'}
             opacity={effectiveOpacity * appear * (highlighted ? 0.8 : 0.3)}
           />
         )
@@ -144,8 +144,8 @@ export function MerkleTreeStage({ progress }: StageProps) {
           >
             <sphereGeometry args={[1, 16, 16]} />
             <meshStandardMaterial
-              color={node.isHighlighted ? '#8b5cf6' : '#52525b'}
-              emissive={node.isHighlighted ? '#8b5cf6' : '#27272a'}
+              color={node.isHighlighted ? '#d4d4d8' : '#52525b'}
+              emissive={node.isHighlighted ? '#d4d4d8' : '#27272a'}
               emissiveIntensity={node.isHighlighted ? 0.6 : 0.1}
               transparent
               opacity={effectiveOpacity * appear}
@@ -161,8 +161,8 @@ export function MerkleTreeStage({ progress }: StageProps) {
         <mesh position={[nodes[0].x, nodes[0].y, 0]} scale={0.35}>
           <sphereGeometry args={[1, 16, 16]} />
           <meshStandardMaterial
-            color="#22d3ee"
-            emissive="#22d3ee"
+            color="#e4e4e7"
+            emissive="#e4e4e7"
             emissiveIntensity={1}
             transparent
             opacity={effectiveOpacity * Math.min(1, (lp - 0.7) / 0.2)}

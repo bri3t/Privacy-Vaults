@@ -2,6 +2,9 @@ import { useState, useRef, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { FlowScene } from './FlowScene.tsx'
 import { FlowOverlay } from './FlowOverlay.tsx'
+import { CommitmentAnimation } from './CommitmentAnimation.tsx'
+import { MerkleTreeAnimation } from './MerkleTreeAnimation.tsx'
+import { ZKProofAnimation } from './ZKProofAnimation.tsx'
 
 const STAGE_LABELS = ['Deposit', 'Commitment', 'Merkle Tree', 'ZK Proof', 'Withdraw']
 
@@ -47,17 +50,31 @@ export function FlowVisualization({ onLaunch }: FlowVisualizationProps) {
     if (activeStep > 0) setActiveStep(activeStep - 1)
   }
 
+  const isCommitmentStage = activeStep === 1
+  const isMerkleTreeStage = activeStep === 2
+  const isZKProofStage = activeStep === 3
+  const useCustomAnimation = isCommitmentStage || isMerkleTreeStage || isZKProofStage
+
   return (
     <div className="relative w-full h-[80vh] overflow-hidden">
-      {/* Three.js canvas */}
+      {/* Three.js canvas - hide during custom animation stages */}
       <Canvas
         camera={{ position: [0, 0, 8], fov: 50 }}
         dpr={[1, 1.5]}
         gl={{ antialias: true, alpha: true }}
-        style={{ background: 'transparent' }}
+        style={{ background: 'transparent', display: useCustomAnimation ? 'none' : 'block' }}
       >
         <FlowScene progress={progress} />
       </Canvas>
+
+      {/* Commitment Animation - show only during commitment stage */}
+      <CommitmentAnimation visible={isCommitmentStage} />
+
+      {/* Merkle Tree Animation - show only during merkle tree stage */}
+      <MerkleTreeAnimation visible={isMerkleTreeStage} />
+
+      {/* ZK Proof Animation - show only during ZK proof stage */}
+      <ZKProofAnimation visible={isZKProofStage} />
 
       {/* HTML overlay */}
       <FlowOverlay activeStep={activeStep} onLaunch={onLaunch} />
@@ -80,9 +97,9 @@ export function FlowVisualization({ onLaunch }: FlowVisualizationProps) {
                     w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold
                     transition-all duration-300 border-2
                     ${isActive
-                      ? 'bg-amber-500 border-transparent text-white shadow-lg shadow-amber-500/30 scale-110'
+                      ? 'bg-white border-transparent text-zinc-950 shadow-lg shadow-white/20 scale-110'
                       : isDone
-                        ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                        ? 'bg-white/10 border-white/25 text-zinc-300'
                         : 'bg-[var(--bg-surface)] border-[var(--border-primary)] text-[var(--text-muted)] group-hover:border-[var(--text-muted)] group-hover:text-[var(--text-secondary)]'
                     }
                   `}
@@ -91,7 +108,7 @@ export function FlowVisualization({ onLaunch }: FlowVisualizationProps) {
                 </div>
                 <span
                   className={`text-[10px] font-medium transition-colors duration-300 ${
-                    isActive ? 'text-[var(--text-primary)]' : isDone ? 'text-amber-400' : 'text-[var(--text-muted)]'
+                    isActive ? 'text-[var(--text-primary)]' : isDone ? 'text-zinc-400' : 'text-[var(--text-muted)]'
                   }`}
                 >
                   {label}

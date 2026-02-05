@@ -122,7 +122,7 @@ export function ProofStage({ progress }: StageProps) {
             key={`circuit-${i}`}
             start={cl.start}
             end={cl.end}
-            color={i % 3 === 0 ? '#8b5cf6' : '#3f3f46'}
+            color={i % 3 === 0 ? '#d4d4d8' : '#3f3f46'}
             opacity={effectiveOpacity * appear * 0.4}
           />
         )
@@ -138,7 +138,7 @@ export function ProofStage({ progress }: StageProps) {
         </bufferGeometry>
         <pointsMaterial
           size={0.06}
-          color="#22d3ee"
+          color="#e4e4e7"
           transparent
           opacity={effectiveOpacity * lp}
           sizeAttenuation
@@ -152,8 +152,8 @@ export function ProofStage({ progress }: StageProps) {
         <mesh>
           <torusGeometry args={[0.8, 0.05, 16, 32]} />
           <meshStandardMaterial
-            color="#22d3ee"
-            emissive="#22d3ee"
+            color="#e4e4e7"
+            emissive="#e4e4e7"
             emissiveIntensity={0.8}
             transparent
             opacity={effectiveOpacity}
@@ -163,8 +163,8 @@ export function ProofStage({ progress }: StageProps) {
         <mesh>
           <icosahedronGeometry args={[0.5, 0]} />
           <meshStandardMaterial
-            color="#8b5cf6"
-            emissive="#8b5cf6"
+            color="#d4d4d8"
+            emissive="#d4d4d8"
             emissiveIntensity={0.6}
             transparent
             opacity={effectiveOpacity * 0.8}
@@ -175,8 +175,8 @@ export function ProofStage({ progress }: StageProps) {
         <mesh>
           <sphereGeometry args={[0.3, 16, 16]} />
           <meshStandardMaterial
-            color="#c4b5fd"
-            emissive="#c4b5fd"
+            color="#f4f4f5"
+            emissive="#f4f4f5"
             emissiveIntensity={1}
             transparent
             opacity={effectiveOpacity * 0.6}
