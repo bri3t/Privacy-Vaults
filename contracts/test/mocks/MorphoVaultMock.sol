@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IMorphoVault} from "../interfaces/IMorphoPool.sol";
+import {IMorphoVault} from "../../src/interfaces/IMorphoPool.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @dev On-chain mock of a MetaMorpho vault (ERC-4626) for testnet deployment.
