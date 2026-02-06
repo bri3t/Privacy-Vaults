@@ -4,6 +4,7 @@ import { AnimatedBackground } from '../components/AnimatedBackground.tsx'
 import { DecryptedText } from '../components/DecryptedText.tsx'
 import { WithdrawTab } from '../components/WithdrawTab.tsx'
 import { DepositTab } from '../components/DepositTab.tsx'
+import { BorrowTab } from '../components/BorrowTab.tsx'
 import { SidebarMenu } from '../components/SidebarMenu.tsx'
 import { StatsPanel } from '../components/StatsPanel.tsx'
 
@@ -28,7 +29,7 @@ function getInitialVault(): VaultConfig {
 }
 
 
-type Tab = 'deposit' | 'withdraw'
+type Tab = 'deposit' | 'withdraw' | 'borrow'
 
 const CHAIN_MAP: Record<number, typeof baseSepolia | typeof base> = {
     [baseSepolia.id]: baseSepolia,
@@ -40,7 +41,7 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
     const { switchChainAsync } = useSwitchChain();
     const { isAuthenticated } = useUser();
     const networkConfig = useNetworkConfig()
-    const { mode, isMainnet } = useNetworkMode()
+    const { isMainnet } = useNetworkMode()
 
     // Silent auto-claim from Circle faucet on testnet
     useFaucetClaim(address, !isMainnet)
@@ -122,7 +123,7 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
                     <div className="glass-card rounded-2xl shadow-xl shadow-black/10 h-full flex flex-col">
                         {/* Tabs */}
                         <div className="flex overflow-hidden rounded-t-2xl">
-                            {(['deposit', 'withdraw'] as const).map((t) => (
+                            {(['deposit', 'withdraw', 'borrow'] as const).map((t) => (
                                 <button
                                     key={t}
                                     onClick={() => setTab(t)}
@@ -143,7 +144,9 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
                         <div className="p-6 flex-1 flex flex-col">
                             {tab === 'deposit'
                                 ? <DepositTab publicClient={publicClient} isConnected={isConnected} address={address} selectedVault={selectedVault} onVaultChange={setSelectedVault} networkConfig={networkConfig} />
-                                : <WithdrawTab selectedVault={selectedVault} networkConfig={networkConfig} />
+                                : tab === 'withdraw'
+                                ? <WithdrawTab selectedVault={selectedVault} networkConfig={networkConfig} />
+                                : <BorrowTab selectedVault={selectedVault} networkConfig={networkConfig} />
                             }
                         </div>
                     </div>

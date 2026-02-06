@@ -45,7 +45,7 @@ function Gear({
   innerR,
   teeth,
   thickness,
-  color,
+  color: _color,
   glowColor,
   position,
   rotationOffset = 0,
@@ -409,7 +409,7 @@ export function DepositStage({ progress }: StageProps) {
   const haloRing2Ref = useRef<THREE.Mesh>(null)
   const userRef = useRef<THREE.Group>(null)
 
-  const lp = localProgress(progress)
+  localProgress(progress)
   const opacity = progress > 0.2 ? Math.max(0, 1 - (progress - 0.2) / 0.06) : 1
 
   // Positions

@@ -3,11 +3,12 @@ import type { Hex } from 'viem'
 import { decodeNote } from '../zk/note.ts'
 import { bytesToHex } from '../zk/utils.ts'
 import { buildMerkleTree } from '../zk/merkleTree.ts'
-import { generateWithdrawProof, computeNullifierHash, computeCollateralNullifierHash } from '../zk/proof.ts'
+import { generateBorrowProof, computeCollateralNullifierHash } from '../zk/proof.ts'
 import { getBarretenberg } from '../zk/barretenberg.ts'
+
 const RELAYER_URL = import.meta.env.VITE_RELAYER_URL || 'http://localhost:3007'
 
-export type WithdrawStep =
+export type BorrowStep =
   | 'idle'
   | 'fetching-events'
   | 'building-tree'
@@ -16,27 +17,26 @@ export type WithdrawStep =
   | 'done'
   | 'error'
 
-interface WithdrawState {
-  step: WithdrawStep
+interface BorrowState {
+  step: BorrowStep
   txHash: string | null
   error: string | null
 }
 
-export function useWithdraw(vaultAddress: string) {
-  const [state, setState] = useState<WithdrawState>({
+export function useBorrow(vaultAddress: string) {
+  const [state, setState] = useState<BorrowState>({
     step: 'idle',
     txHash: null,
     error: null,
   })
 
-  const withdraw = useCallback(
-    async (noteHex: string, recipient: string) => {
+  const borrow = useCallback(
+    async (noteHex: string, recipient: string, borrowAmount: string) => {
       try {
-        // Step 1: Decode note and compute final commitment (inner + yieldIndex)
+        // Step 1: Decode note and compute final commitment
         const { nullifier, secret, commitment, yieldIndex } = decodeNote(noteHex)
         const yieldIndexHex = bytesToHex(yieldIndex)
 
-        // The tree stores finalCommitment = Poseidon2(innerCommitment, yieldIndex)
         const bb = await getBarretenberg()
         const { hash: finalCommitment } = await bb.poseidon2Hash({ inputs: [commitment, yieldIndex] })
         const commitmentHex = bytesToHex(finalCommitment)
@@ -69,16 +69,14 @@ export function useWithdraw(vaultAddress: string) {
 
         const merkleProof = tree.proof(leafIndex)
 
-        // Step 4: Generate ZK proof
+        // Step 4: Generate borrow ZK proof (only collateralNullifierHash, NOT nullifierHash)
         setState((s) => ({ ...s, step: 'generating-proof' }))
-        const nullifierHash = await computeNullifierHash(nullifier)
         const collateralNullifierHash = await computeCollateralNullifierHash(nullifier)
 
-        const { proof, root } = await generateWithdrawProof(
+        const { proof, root } = await generateBorrowProof(
           merkleProof.root,
           nullifier,
           secret,
-          nullifierHash,
           collateralNullifierHash,
           recipient,
           yieldIndexHex,
@@ -86,33 +84,32 @@ export function useWithdraw(vaultAddress: string) {
           merkleProof.pathIndices,
         )
 
-        // Step 5: Submit transaction via relayer
+        // Step 5: Submit borrow transaction via relayer
         setState((s) => ({ ...s, step: 'submitting' }))
         const proofHex = ('0x' +
           Array.from(proof)
             .map((b) => b.toString(16).padStart(2, '0'))
             .join('')) as Hex
 
-        // Convert yield index bytes to decimal string for the contract
         const yieldIndexDecimal = BigInt(yieldIndexHex).toString()
 
-        const res = await fetch(`${RELAYER_URL}/api/vault/withdraw`, {
+        const res = await fetch(`${RELAYER_URL}/api/vault/borrow`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             proof: proofHex,
             root: root as Hex,
-            nullifierHash: nullifierHash as Hex,
             collateralNullifierHash: collateralNullifierHash as Hex,
             recipient,
             yieldIndex: yieldIndexDecimal,
+            borrowAmount,
             vaultAddress,
           }),
         })
 
         if (!res.ok) {
           const err = await res.json().catch(() => ({ error: 'Relay failed' }))
-          throw new Error(err.error || err.details || 'Relay request failed')
+          throw new Error(err.error || err.details || 'Borrow relay request failed')
         }
 
         const { transactionHash } = await res.json()
@@ -129,5 +126,5 @@ export function useWithdraw(vaultAddress: string) {
     setState({ step: 'idle', txHash: null, error: null })
   }, [])
 
-  return { ...state, withdraw, reset }
+  return { ...state, borrow, reset }
 }

@@ -3,6 +3,7 @@ import { useAccount } from 'wagmi'
 import { OpenfortButton } from '@openfort/react'
 import { useWithdraw } from '../hooks/useWithdraw.ts'
 import { useNoteMetadata } from '../hooks/useNoteMetadata.ts'
+import { useWithdrawPreview } from '../hooks/useWithdrawPreview.ts'
 import { ProgressModal } from './ProgressModal.tsx'
 import { CrossChainSelector } from './CrossChainSelector.tsx'
 import { useLiFiQuote } from '../hooks/useLiFiQuote.ts'
@@ -38,7 +39,8 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
   const { address, isConnected } = useAccount()
   const { step, txHash, error, withdraw, reset } = useWithdraw(selectedVault.address)
   const { step: bridgeStep, txHash: bridgeTxHash, error: bridgeError, bridge, reset: bridgeReset } = useLiFiBridge()
-  const noteMetadata = useNoteMetadata(noteInput, selectedVault.address, selectedVault.denomination, selectedVault.displayAmount)
+  const noteMetadata = useNoteMetadata(noteInput, selectedVault.address, Number(selectedVault.denomination), selectedVault.displayAmount)
+  const preview = useWithdrawPreview(selectedVault.address, selectedVault.denomination, noteMetadata.yieldIndex, noteMetadata.isValid)
 
   // Snapshot recipient/ensName when withdraw starts (for success display)
   const successSnapshot = useRef<{ recipient: string; ensName: string | null }>({ recipient: '', ensName: null })
@@ -163,6 +165,24 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
                   <p className="text-sm font-medium text-[var(--text-primary)]">{noteMetadata.depositsAfter}</p>
                 </div>
               </div>
+              {preview.isLoading && (
+                <div className="mt-2 pt-2 border-t border-[var(--border-primary)] flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs text-[var(--text-muted)]">Calculating payout...</span>
+                </div>
+              )}
+              {!preview.isLoading && preview.received && (
+                <div className="mt-2 pt-2 border-t border-[var(--border-primary)] flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-[var(--text-muted)]">You receive</p>
+                    <p className="text-sm font-semibold text-[var(--accent)]">{preview.received}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-[var(--text-muted)]">Fee ({(preview.feeBps / 100).toFixed(1)}%)</p>
+                    <p className="text-sm font-medium text-[var(--text-secondary)]">{preview.fee}</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           <label className="block">

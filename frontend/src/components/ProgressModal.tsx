@@ -28,6 +28,7 @@ interface ProgressModalProps {
   onClose?: () => void
   // Success state props
   successTitle?: string
+  successMessage?: string
   successDetails?: SuccessDetails
   onDone?: () => void
 }
@@ -47,6 +48,7 @@ export function ProgressModal({
   onRetry,
   onClose,
   successTitle,
+  successMessage,
   successDetails,
   onDone,
 }: ProgressModalProps) {
@@ -55,7 +57,7 @@ export function ProgressModal({
   const currentIndex = steps.findIndex((s) => s.key === currentStep)
   const isDone = currentStep === 'done'
   const isError = currentStep === 'error'
-  const showSuccess = isDone && successDetails
+  const showSuccess = isDone && (successDetails || successTitle)
 
   return createPortal(
     <AnimatePresence>
@@ -98,40 +100,47 @@ export function ProgressModal({
                 </h3>
               </div>
 
+              {/* Success Message */}
+              {successMessage && (
+                <p className="text-sm text-[var(--text-secondary)] text-center">{successMessage}</p>
+              )}
+
               {/* Success Details */}
-              <div className="bg-[var(--bg-surface)] border border-[var(--border-primary)] rounded-xl p-4 space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-[var(--text-tertiary)]">Amount</span>
-                  <span className="text-sm font-semibold text-[var(--text-primary)]">
-                    {successDetails.amount} {successDetails.token}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-[var(--text-tertiary)]">Network</span>
-                  <span className="text-sm font-medium text-[var(--text-primary)]">
-                    {successDetails.network}
-                  </span>
-                </div>
-                <div className="flex justify-between items-start">
-                  <span className="text-sm text-[var(--text-tertiary)]">Recipient</span>
-                  <div className="text-right">
-                    {successDetails.ensName ? (
-                      <div className="space-y-0.5">
-                        <span className="text-sm font-medium text-[var(--text-primary)]">
-                          {successDetails.ensName}
-                        </span>
-                        <p className="text-xs font-mono text-[var(--text-tertiary)]">
+              {successDetails && (
+                <div className="bg-[var(--bg-surface)] border border-[var(--border-primary)] rounded-xl p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-[var(--text-tertiary)]">Amount</span>
+                    <span className="text-sm font-semibold text-[var(--text-primary)]">
+                      {successDetails.amount} {successDetails.token}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-[var(--text-tertiary)]">Network</span>
+                    <span className="text-sm font-medium text-[var(--text-primary)]">
+                      {successDetails.network}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-start">
+                    <span className="text-sm text-[var(--text-tertiary)]">Recipient</span>
+                    <div className="text-right">
+                      {successDetails.ensName ? (
+                        <div className="space-y-0.5">
+                          <span className="text-sm font-medium text-[var(--text-primary)]">
+                            {successDetails.ensName}
+                          </span>
+                          <p className="text-xs font-mono text-[var(--text-tertiary)]">
+                            {shortenAddress(successDetails.recipient)}
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-sm font-mono text-[var(--text-primary)]">
                           {shortenAddress(successDetails.recipient)}
-                        </p>
-                      </div>
-                    ) : (
-                      <span className="text-sm font-mono text-[var(--text-primary)]">
-                        {shortenAddress(successDetails.recipient)}
-                      </span>
-                    )}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Transaction link */}
               {txHash && explorerUrl && (

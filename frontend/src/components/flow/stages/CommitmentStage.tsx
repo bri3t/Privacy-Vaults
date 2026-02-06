@@ -158,7 +158,7 @@ export function CommitmentStage({ progress }: StageProps) {
   const groupRef = useRef<THREE.Group>(null)
   const flashRef = useRef<THREE.Mesh>(null)
 
-  const lp = localProgress(progress)
+  localProgress(progress)
 
   // Animation state refs
   const stateRef = useRef({

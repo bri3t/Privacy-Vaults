@@ -1,12 +1,18 @@
 import type { Request, Response } from "express";
 import type { Openfort } from "@openfort/openfort-node";
 import type { Config } from "./config.js";
-import { relayVaultDeposit, relayVaultWithdraw, getCommitments, getCurrentYieldIndex, getDepositStats, type VaultDepositRequest, type VaultWithdrawRequest } from "./vault.js";
+import { relayVaultDeposit, relayVaultWithdraw, relayVaultBorrow, relayVaultRepay, getLoanInfo, getFeeInfo, getCommitments, getCurrentYieldIndex, getDepositStats, type VaultDepositRequest, type VaultWithdrawRequest, type VaultBorrowRequest, type VaultRepayRequest } from "./vault.js";
 
 const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
+const HEX_PATTERN = /^0x[0-9a-fA-F]+$/;
+const BYTES32_LENGTH = 66; // 0x + 64 hex chars
 
 function isValidAddress(value: unknown): value is string {
   return typeof value === "string" && ADDRESS_PATTERN.test(value);
+}
+
+function isValidBytes32(value: unknown): value is string {
+  return typeof value === "string" && HEX_PATTERN.test(value) && value.length === BYTES32_LENGTH;
 }
 
 export async function handleHealth(_req: Request, res: Response): Promise<void> {
@@ -91,8 +97,7 @@ export async function handleVaultDeposit(
     }
 
     // Validate hex format
-    const hexPattern = /^0x[0-9a-fA-F]+$/;
-    if (!hexPattern.test(body.commitment) || !hexPattern.test(body.encodedAuth)) {
+    if (!HEX_PATTERN.test(body.commitment) || !HEX_PATTERN.test(body.encodedAuth)) {
       res.status(400).json({
         error: "Invalid hex format for commitment or encodedAuth",
       });
@@ -153,29 +158,23 @@ export async function handleVaultWithdraw(
       return;
     }
 
-    if (!body.proof || !body.root || !body.nullifierHash || !body.recipient || !body.yieldIndex) {
+    if (!body.proof || !body.root || !body.nullifierHash || !body.collateralNullifierHash || !body.recipient || !body.yieldIndex) {
       res.status(400).json({
-        error: "Missing required fields: proof, root, nullifierHash, recipient, yieldIndex",
+        error: "Missing required fields: proof, root, nullifierHash, collateralNullifierHash, recipient, yieldIndex",
       });
       return;
     }
 
-    const hexPattern = /^0x[0-9a-fA-F]+$/;
-    if (!hexPattern.test(body.proof) || !hexPattern.test(body.root) || !hexPattern.test(body.nullifierHash)) {
+    if (!HEX_PATTERN.test(body.proof) || !isValidBytes32(body.root) || !isValidBytes32(body.nullifierHash) || !isValidBytes32(body.collateralNullifierHash)) {
       res.status(400).json({ error: "Invalid hex format" });
       return;
     }
 
-    // Validate field lengths
     if (body.proof.length > 100_000) {
       res.status(400).json({ error: "proof exceeds maximum length" });
       return;
     }
-    if (body.root.length !== 66 || body.nullifierHash.length !== 66) {
-      res.status(400).json({ error: "root and nullifierHash must be bytes32" });
-      return;
-    }
-    if (body.recipient.length !== 42 || !hexPattern.test(body.recipient)) {
+    if (!isValidAddress(body.recipient)) {
       res.status(400).json({ error: "recipient must be a valid address" });
       return;
     }
@@ -184,6 +183,7 @@ export async function handleVaultWithdraw(
       proof: body.proof,
       root: body.root,
       nullifierHash: body.nullifierHash,
+      collateralNullifierHash: body.collateralNullifierHash,
       recipient: body.recipient,
       yieldIndex: body.yieldIndex,
       vaultAddress: body.vaultAddress,
@@ -206,6 +206,207 @@ export async function handleVaultWithdraw(
     });
   } catch (error) {
     console.error("Vault withdrawal error:", error instanceof Error ? error.message : "Unknown error");
+    res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+}
+
+/**
+ * Relays a vault borrow with ZK proof
+ */
+export async function handleVaultBorrow(
+  req: Request,
+  res: Response,
+  vaultConfig: Config["vault"]
+): Promise<void> {
+  try {
+    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+
+    if (!isValidAddress(body?.vaultAddress)) {
+      res.status(400).json({ error: "Missing or invalid vaultAddress" });
+      return;
+    }
+
+    if (!body.proof || !body.root || !body.collateralNullifierHash || !body.recipient || !body.yieldIndex || !body.borrowAmount) {
+      res.status(400).json({
+        error: "Missing required fields: proof, root, collateralNullifierHash, recipient, yieldIndex, borrowAmount",
+      });
+      return;
+    }
+
+    if (!HEX_PATTERN.test(body.proof) || !isValidBytes32(body.root) || !isValidBytes32(body.collateralNullifierHash)) {
+      res.status(400).json({ error: "Invalid hex format" });
+      return;
+    }
+
+    if (body.proof.length > 100_000) {
+      res.status(400).json({ error: "proof exceeds maximum length" });
+      return;
+    }
+    if (!isValidAddress(body.recipient)) {
+      res.status(400).json({ error: "recipient must be a valid address" });
+      return;
+    }
+
+    const request: VaultBorrowRequest = {
+      proof: body.proof,
+      root: body.root,
+      collateralNullifierHash: body.collateralNullifierHash,
+      recipient: body.recipient,
+      yieldIndex: body.yieldIndex,
+      borrowAmount: body.borrowAmount,
+      vaultAddress: body.vaultAddress,
+    };
+
+    const result = await relayVaultBorrow(request, vaultConfig);
+
+    if (!result.success) {
+      res.status(500).json({
+        error: "Failed to relay vault borrow",
+        details: result.error,
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Vault borrow relayed successfully",
+      transactionHash: result.transactionHash,
+      blockNumber: result.blockNumber,
+    });
+  } catch (error) {
+    console.error("Vault borrow error:", error instanceof Error ? error.message : "Unknown error");
+    res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+}
+
+/**
+ * Relays a vault repay with EIP-3009 authorization
+ */
+export async function handleVaultRepay(
+  req: Request,
+  res: Response,
+  vaultConfig: Config["vault"]
+): Promise<void> {
+  try {
+    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+
+    if (!isValidAddress(body?.vaultAddress)) {
+      res.status(400).json({ error: "Missing or invalid vaultAddress" });
+      return;
+    }
+
+    if (!body.collateralNullifierHash || !body.encodedAuth) {
+      res.status(400).json({
+        error: "Missing required fields: collateralNullifierHash, encodedAuth",
+      });
+      return;
+    }
+
+    if (!isValidBytes32(body.collateralNullifierHash) || !HEX_PATTERN.test(body.encodedAuth)) {
+      res.status(400).json({ error: "Invalid hex format" });
+      return;
+    }
+
+    if (body.encodedAuth.length > 2000) {
+      res.status(400).json({ error: "encodedAuth exceeds maximum length" });
+      return;
+    }
+
+    const request: VaultRepayRequest = {
+      collateralNullifierHash: body.collateralNullifierHash,
+      encodedAuth: body.encodedAuth,
+      vaultAddress: body.vaultAddress,
+    };
+
+    const result = await relayVaultRepay(request, vaultConfig);
+
+    if (!result.success) {
+      res.status(500).json({
+        error: "Failed to relay vault repay",
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Vault repay relayed successfully",
+      transactionHash: result.transactionHash,
+      blockNumber: result.blockNumber,
+    });
+  } catch (error) {
+    console.error("Vault repay error:", error instanceof Error ? error.message : "Unknown error");
+    res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+}
+
+/**
+ * Returns loan info for a given collateral nullifier hash
+ */
+export async function handleLoanInfo(
+  req: Request,
+  res: Response,
+  vaultConfig: Config["vault"]
+): Promise<void> {
+  try {
+    const vaultAddress = req.query.vaultAddress;
+    const collateralNullifierHash = req.query.collateralNullifierHash;
+
+    if (!isValidAddress(vaultAddress)) {
+      res.status(400).json({ error: "Missing or invalid vaultAddress query parameter" });
+      return;
+    }
+    if (!isValidBytes32(collateralNullifierHash)) {
+      res.status(400).json({ error: "Missing or invalid collateralNullifierHash query parameter" });
+      return;
+    }
+
+    const result = await getLoanInfo(vaultAddress, collateralNullifierHash, vaultConfig);
+
+    if (result.error) {
+      res.status(500).json({ error: result.error });
+      return;
+    }
+
+    res.status(200).json({ debt: result.debt, fee: result.fee, repaymentAmount: result.repaymentAmount, loan: result.loan });
+  } catch (error) {
+    console.error("Loan info error:", error instanceof Error ? error.message : "Unknown error");
+    res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+}
+
+/**
+ * Returns the relayer fee configuration for a vault
+ */
+export async function handleFeeInfo(
+  req: Request,
+  res: Response,
+  vaultConfig: Config["vault"]
+): Promise<void> {
+  try {
+    const vaultAddress = req.query.vaultAddress;
+    if (!isValidAddress(vaultAddress)) {
+      res.status(400).json({ error: "Missing or invalid vaultAddress query parameter" });
+      return;
+    }
+
+    const result = await getFeeInfo(vaultAddress, vaultConfig);
+
+    if (result.error) {
+      res.status(500).json({ error: result.error });
+      return;
+    }
+
+    res.status(200).json({ feeBps: result.feeBps, feeRecipient: result.feeRecipient });
+  } catch (error) {
+    console.error("Fee info error:", error instanceof Error ? error.message : "Unknown error");
     res.status(500).json({
       error: "Internal server error",
     });

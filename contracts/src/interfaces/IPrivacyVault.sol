@@ -57,13 +57,13 @@ interface IPrivacyVault {
     function getMorphoNormalizedIncome() external view returns (uint256);
     function getCurrentBucketedYieldIndex() external view returns (uint256);
     function getDebt(bytes32 _collateralNullifierHash) external view returns (uint256);
-    function s_relayerFeeBps() external view returns (uint256);
+    function s_withdrawalFeeBps() external view returns (uint256);
     function s_feeRecipient() external view returns (address);
     function getRepaymentAmount(bytes32 _collateralNullifierHash) external view returns (uint256);
 
     // ---- State-changing ----
     function setPools(address _aavePool, address _morphoVault) external;
-    function setRelayerFee(uint256 _feeBps) external;
+    function setWithdrawalFee(uint256 _feeBps) external;
     function setFeeRecipient(address _feeRecipient) external;
 
     function depositWithAuthorization(bytes32 _innerCommitment, bytes calldata _receiveAuthorization) external;

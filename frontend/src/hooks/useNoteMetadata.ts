@@ -14,6 +14,7 @@ export interface NoteMetadata {
   leafIndex: number
   totalDeposits: number
   depositsAfter: number
+  yieldIndex: string
   isLoading: boolean
   error: string | null
 }
@@ -26,6 +27,7 @@ const initialState: NoteMetadata = {
   leafIndex: -1,
   totalDeposits: 0,
   depositsAfter: 0,
+  yieldIndex: '',
   isLoading: false,
   error: null,
 }
@@ -60,12 +62,13 @@ export function useNoteMetadata(
 
       try {
         // Step 1: Decode note
-        const { commitment, yieldIndex } = decodeNote(trimmed)
+        const { commitment, yieldIndex: yieldIndexBytes } = decodeNote(trimmed)
+        const yieldIndexHex = bytesToHex(yieldIndexBytes)
 
         // Step 2: Compute final commitment using Barretenberg
         const bb = await getBarretenberg()
         const { hash: finalCommitment } = await bb.poseidon2Hash({
-          inputs: [commitment, yieldIndex],
+          inputs: [commitment, yieldIndexBytes],
         })
         const commitmentHex = bytesToHex(finalCommitment)
 
@@ -118,6 +121,7 @@ export function useNoteMetadata(
           leafIndex,
           totalDeposits,
           depositsAfter,
+          yieldIndex: yieldIndexHex,
           isLoading: false,
           error: null,
         })

@@ -3,14 +3,15 @@ pragma solidity ^0.8.24;
 
 import {Script, console} from "forge-std/Script.sol";
 import {HonkVerifier} from "../src/Verifier.sol";
+import {BorrowHonkVerifier} from "../src/BorrowVerifier.sol";
 import {PrivacyVault, IVerifier, Poseidon2} from "../src/PrivacyVault.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAavePool} from "../src/interfaces/IAavePool.sol";
 import {IMorphoVault} from "../src/interfaces/IMorphoPool.sol";
-import {AavePoolMock} from "../src/mocks/AavePoolMock.sol";
-import {MorphoVaultMock} from "../src/mocks/MorphoVaultMock.sol";
+import {AavePoolMock} from "../test/mocks/AavePoolMock.sol";
+import {MorphoVaultMock} from "../test/mocks/MorphoVaultMock.sol";
 
-/// @notice Deploys 4 multi-denomination PrivacyVaults on Base Sepolia with mock strategies.
+/// @notice Deploys 4 multi-denomination PrivacyVaults with borrow support on Base Sepolia.
 contract DeployTestnet is Script {
     function run() external {
         address usdc = 0x036CbD53842c5426634e7929541eC2318f3dCF7e; // USDC on Base Sepolia
@@ -26,12 +27,15 @@ contract DeployTestnet is Script {
 
         // Deploy core contracts (shared)
         Poseidon2 poseidon = new Poseidon2();
-        HonkVerifier verifier = new HonkVerifier();
 
-        // Deploy one vault per denomination
+        HonkVerifier withdrawVerifier = new HonkVerifier();
+        BorrowHonkVerifier borrowVerifier = new BorrowHonkVerifier();
+
+        // Deploy one vault per denomination 
         for (uint256 i = 0; i < denominations.length; i++) {
             PrivacyVault vault = new PrivacyVault(
-                IVerifier(verifier),
+                IVerifier(withdrawVerifier),
+                IVerifier(address(borrowVerifier)),
                 poseidon,
                 20, // merkle tree depth
                 denominations[i],
@@ -45,9 +49,10 @@ contract DeployTestnet is Script {
         vm.stopBroadcast();
 
         console.log("=== Testnet Deployment (Base Sepolia) ===");
-        console.log("AavePoolMock:    ", address(aaveMock));
-        console.log("MorphoVaultMock: ", address(morphoMock));
-        console.log("Poseidon2:       ", address(poseidon));
-        console.log("HonkVerifier:    ", address(verifier));
+        console.log("AavePoolMock:      ", address(aaveMock));
+        console.log("MorphoVaultMock:   ", address(morphoMock));
+        console.log("Poseidon2:         ", address(poseidon));
+        console.log("WithdrawVerifier:  ", address(withdrawVerifier));
+        console.log("BorrowVerifier:    ", address(borrowVerifier));
     }
 }

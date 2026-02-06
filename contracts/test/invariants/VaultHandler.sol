@@ -169,9 +169,7 @@ contract VaultHandler is Test {
         uint256 debt = vault.getDebt(info.collateralNullifierHash);
         if (debt == 0) return;
 
-        uint256 feeBps = vault.s_relayerFeeBps();
-        uint256 fee = (debt * feeBps) / BPS;
-        uint256 repaymentAmount = debt + fee;
+        uint256 repaymentAmount = debt;
 
         // Ensure depositor has enough USDC for repayment
         if (usdc.balanceOf(depositor) < repaymentAmount) {

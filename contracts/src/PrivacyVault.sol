@@ -49,10 +49,9 @@ contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard, Ownable, IPriva
     mapping(bytes32 => bool) public s_collateralSpent; // collateralNullifierHash => bool (prevents borrow if deposit already withdrawn)
     uint256 public totalBorrowed; // for monitoring total outstanding debt
 
-    uint256 public s_relayerFeeBps; // fee in basis points (e.g. 50 = 0.5%)
-    address public s_feeRecipient; // receives fees on each withdraw/borrow/repay
-
     uint256 private constant MAX_FEE_BPS = 500; // 5% cap
+    uint256 public s_withdrawalFeeBps; // fee in basis points, withdrawal only
+    address public s_feeRecipient;
 
 
     constructor(
@@ -90,6 +89,7 @@ contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard, Ownable, IPriva
         initialMorphoSharePrice = _morphoVault.convertToAssets(ONE_SHARE);
 
         s_feeRecipient = msg.sender;
+        s_withdrawalFeeBps = 5; // 0.05% default
     }
 
     // Trusted function to update strategy addresses in case of upgrades or emergencies.
@@ -110,9 +110,9 @@ contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard, Ownable, IPriva
         emit PoolUpdated(address(aavePool), address(morphoVault));
     }
 
-    function setRelayerFee(uint256 _feeBps) external onlyOwner {
+    function setWithdrawalFee(uint256 _feeBps) external onlyOwner {
         if (_feeBps > MAX_FEE_BPS) revert PrivacyVault__FeeTooHigh(_feeBps, MAX_FEE_BPS);
-        s_relayerFeeBps = _feeBps;
+        s_withdrawalFeeBps = _feeBps;
         emit FeeUpdated(_feeBps);
     }
 
@@ -241,10 +241,7 @@ contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard, Ownable, IPriva
         uint256 currentBlended = (currentAaveIndex + currentMorphoIndex) / 2;
         uint256 payout = (DENOMINATION * currentBlended) / _yieldIndex;
 
-        uint256 fee;
-        if (s_relayerFeeBps > 0) {
-            fee = (payout * s_relayerFeeBps) / BPS;
-        }
+        uint256 fee = (payout * s_withdrawalFeeBps) / BPS;
 
         // Withdraw proportionally to each protocol's current share of the yield.
         uint256 totalIndex = currentAaveIndex + currentMorphoIndex;
@@ -311,11 +308,6 @@ contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard, Ownable, IPriva
         totalBorrowed += _borrowAmount;
 
         // 7. Withdraw from Aave/Morpho proportionally, send to recipient
-        uint256 fee;
-        if (s_relayerFeeBps > 0) {
-            fee = (_borrowAmount * s_relayerFeeBps) / BPS;
-        }
-
         uint256 currentAaveIndex = aavePool.getReserveNormalizedIncome(address(token));
         uint256 currentMorphoIndex = getMorphoNormalizedIncome();
         uint256 totalIndex = currentAaveIndex + currentMorphoIndex;
@@ -325,10 +317,7 @@ contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard, Ownable, IPriva
         morphoVault.withdraw(morphoAmt, address(this), address(this));
         aavePool.withdraw(address(token), aaveAmt, address(this));
 
-        token.safeTransfer(_recipient, _borrowAmount - fee);
-        if (fee > 0) {
-            token.safeTransfer(s_feeRecipient, fee);
-        }
+        token.safeTransfer(_recipient, _borrowAmount);
 
         emit Borrow(_collateralNullifierHash, _recipient, _borrowAmount, currentBlended);
     }
@@ -342,9 +331,7 @@ contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard, Ownable, IPriva
     }
 
     function getRepaymentAmount(bytes32 _collateralNullifierHash) external view returns (uint256) {
-        uint256 debt = getDebt(_collateralNullifierHash);
-        uint256 fee = (debt * s_relayerFeeBps) / BPS;
-        return debt + fee;
+        return getDebt(_collateralNullifierHash);
     }
 
     function repayWithAuthorization(bytes32 _collateralNullifierHash, bytes calldata _receiveAuthorization)
@@ -355,16 +342,11 @@ contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard, Ownable, IPriva
         if (!loan.active) revert PrivacyVault__NoActiveLoan({collateralNullifierHash: _collateralNullifierHash});
 
         uint256 debt = getDebt(_collateralNullifierHash);
-        uint256 fee;
-        if (s_relayerFeeBps > 0) {
-            fee = (debt * s_relayerFeeBps) / BPS;
-        }
-        uint256 totalRequired = debt + fee;
 
-        // Validate EIP-3009 authorization matches debt + fee amount
+        // Validate EIP-3009 authorization matches debt amount
         (address from, address to, uint256 amount) =
             abi.decode(_receiveAuthorization[0:96], (address, address, uint256));
-        require(amount >= totalRequired, "Insufficient repayment");
+        require(amount >= debt, "Insufficient repayment");
         require(to == address(this), "Wrong recipient");
 
         // Receive USDC via EIP-3009
@@ -378,11 +360,6 @@ contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard, Ownable, IPriva
         morphoVault.deposit(split, address(this));
         token.approve(address(aavePool), debt - split);
         aavePool.supply(address(token), debt - split, address(this), 0);
-
-        // Send fee to feeRecipient
-        if (fee > 0) {
-            token.safeTransfer(s_feeRecipient, fee);
-        }
 
         // Clear loan
         loan.active = false;

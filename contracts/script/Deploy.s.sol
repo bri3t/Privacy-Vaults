@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Script, console} from "forge-std/Script.sol";
 import {HonkVerifier} from "../src/Verifier.sol";
+import {BorrowHonkVerifier} from "../src/BorrowVerifier.sol";
 import {PrivacyVault, IVerifier, Poseidon2} from "../src/PrivacyVault.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAavePool} from "../src/interfaces/IAavePool.sol";
@@ -22,12 +23,14 @@ contract Deploy is Script {
 
         // Deploy core contracts (shared)
         Poseidon2 poseidon = new Poseidon2();
-        HonkVerifier verifier = new HonkVerifier();
+        HonkVerifier withdrawVerifier = new HonkVerifier();
+        BorrowHonkVerifier borrowVerifier = new BorrowHonkVerifier();
 
         // Deploy one vault per denomination
         for (uint256 i = 0; i < 4; i++) {
             PrivacyVault vault = new PrivacyVault(
-                IVerifier(verifier),
+                IVerifier(withdrawVerifier),
+                IVerifier(address(borrowVerifier)),
                 poseidon,
                 20, // merkle tree depth
                 denominations[i],
@@ -41,7 +44,8 @@ contract Deploy is Script {
         vm.stopBroadcast();
 
         console.log("=== Mainnet Deployment (Base) ===");
-        console.log("Poseidon2:    ", address(poseidon));
-        console.log("HonkVerifier: ", address(verifier));
+        console.log("Poseidon2:          ", address(poseidon));
+        console.log("WithdrawVerifier:   ", address(withdrawVerifier));
+        console.log("BorrowVerifier:     ", address(borrowVerifier));
     }
 }

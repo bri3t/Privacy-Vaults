@@ -3,7 +3,7 @@ import type { Request, Response, NextFunction } from "express";
 import { config } from "dotenv";
 import { loadConfig } from "./config.js";
 import { createOpenfortClient } from "./openfort.js";
-import { handleHealth, handleShieldSession, handleVaultDeposit, handleVaultWithdraw, handleVaultCommitments, handleYieldIndex, handleVaultStats, handleFaucetClaim } from "./routes.js";
+import { handleHealth, handleShieldSession, handleVaultDeposit, handleVaultWithdraw, handleVaultBorrow, handleVaultRepay, handleLoanInfo, handleFeeInfo, handleVaultCommitments, handleYieldIndex, handleVaultStats, handleFaucetClaim } from "./routes.js";
 
 // Load .env.local
 config({ path: ".env.local" });
@@ -82,6 +82,10 @@ app.get("/api/health", handleHealth);
 app.post("/api/protected-create-encryption-session", rateLimit(10, 60_000), (req, res) => handleShieldSession(req, res, openfortClient, env.openfort.shield));
 app.post("/api/vault/deposit", rateLimit(5, 60_000), (req, res) => handleVaultDeposit(req, res, env.vault));
 app.post("/api/vault/withdraw", rateLimit(5, 60_000), (req, res) => handleVaultWithdraw(req, res, env.vault));
+app.post("/api/vault/borrow", rateLimit(5, 60_000), (req, res) => handleVaultBorrow(req, res, env.vault));
+app.post("/api/vault/repay", rateLimit(5, 60_000), (req, res) => handleVaultRepay(req, res, env.vault));
+app.get("/api/vault/loan", rateLimit(30, 60_000), (_req, res) => handleLoanInfo(_req, res, env.vault));
+app.get("/api/vault/fee", rateLimit(30, 60_000), (_req, res) => handleFeeInfo(_req, res, env.vault));
 app.get("/api/vault/commitments", rateLimit(20, 60_000), (_req, res) => handleVaultCommitments(_req, res, env.vault));
 app.get("/api/vault/yield-index", rateLimit(30, 60_000), (_req, res) => handleYieldIndex(_req, res, env.vault));
 app.get("/api/vault/stats", rateLimit(30, 60_000), (_req, res) => handleVaultStats(_req, res, env.vault));

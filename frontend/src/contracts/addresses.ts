@@ -32,28 +32,28 @@ export interface NetworkConfig {
 // ── Testnet (Base Sepolia) ──────────────────────────────────────────
 const TESTNET_VAULTS: VaultConfig[] = [
   {
-    address: '0x6AE719b55e2D834524F91a9728A276736BC94E1f',
+    address: '0xf90D2f820a327d4F3cc2DE36dBBfd98C124720a9',
     denomination: 1_000_000n,
     label: '1 USDC',
     displayAmount: 1,
     enabled: true,
   },
   {
-    address: '0x3ce1Fb3a204Cd26D8066a6B34209D9679B300a73',
+    address: '0x376dFe15CE2e1e276a35e55F02Dd101Fe1a66e73',
     denomination: 10_000_000n,
     label: '10 USDC',
     displayAmount: 10,
     enabled: true,
   },
   {
-    address: '0x5A8BcBb1C648F97c7218aF3521522DFeb1b814Cb',
+    address: '0x6185aAEaf0c65Fb050DBfb07666D447195d8681b',
     denomination: 20_000_000n,
     label: '20 USDC',
     displayAmount: 20,
     enabled: true,
   },
   {
-    address: '0x313417DB2bFAf181C9f81224Cfd1EeFDA7C726B3',
+    address: '0x3CAffD2107d323Ed78f3BeA9337088FBDE6eB00C',
     denomination: 50_000_000n,
     label: '50 USDC',
     displayAmount: 50,
@@ -64,7 +64,7 @@ const TESTNET_VAULTS: VaultConfig[] = [
 const TESTNET_CONFIG: NetworkConfig = {
   chainId: 84532,
   usdcAddress: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
-  deployBlock: 37139811n,
+  deployBlock: 37317095n,
   vaults: TESTNET_VAULTS,
   explorerBaseUrl: 'https://sepolia.basescan.org',
   usdcDomain: {

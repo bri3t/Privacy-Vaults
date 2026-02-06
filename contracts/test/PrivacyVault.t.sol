@@ -63,8 +63,10 @@ contract PrivacyVaultTest is TestBase {
             payable(address(uint160(uint256(_publicInputs[3])))),
             uint256(_publicInputs[4])
         );
+        uint256 denom = privacyVault.DENOMINATION();
+        uint256 fee = (denom * privacyVault.s_withdrawalFeeBps()) / 10000;
         assertEq(
-            usdc.balanceOf(recipient), privacyVault.DENOMINATION(), "Recipient should have received the withdrawn funds"
+            usdc.balanceOf(recipient), denom - fee, "Recipient should have received the withdrawn funds minus fee"
         );
     }
 
@@ -93,22 +95,20 @@ contract PrivacyVaultTest is TestBase {
         );
     }
 
-    function test_setRelayerFee_onlyOwner() public {
-        // Owner can set fee
-        privacyVault.setRelayerFee(50);
-        assertEq(privacyVault.s_relayerFeeBps(), 50);
+    function test_setWithdrawalFee_onlyOwner() public {
+        privacyVault.setWithdrawalFee(50);
+        assertEq(privacyVault.s_withdrawalFeeBps(), 50);
 
-        // Non-owner reverts
         vm.prank(depositor);
         vm.expectRevert();
-        privacyVault.setRelayerFee(50);
+        privacyVault.setWithdrawalFee(50);
     }
 
-    function test_setRelayerFee_exceedsMax() public {
+    function test_setWithdrawalFee_exceedsMax() public {
         vm.expectRevert(
             abi.encodeWithSelector(IPrivacyVault.PrivacyVault__FeeTooHigh.selector, 501, 500)
         );
-        privacyVault.setRelayerFee(501);
+        privacyVault.setWithdrawalFee(501);
     }
 
     function test_setFeeRecipient_onlyOwner() public {
@@ -130,10 +130,10 @@ contract PrivacyVaultTest is TestBase {
     }
 
     function test_withdrawWithFee() public {
-        // Set 0.5% fee
+        // Set 0.5% withdrawal fee
         address feeRecipient = makeAddr("feeRecipient");
         privacyVault.setFeeRecipient(feeRecipient);
-        privacyVault.setRelayerFee(50);
+        privacyVault.setWithdrawalFee(50);
 
         // Deposit
         (bytes32 _commitment, bytes32 _nullifier, bytes32 _secret) = _getCommitment();
@@ -165,32 +165,6 @@ contract PrivacyVaultTest is TestBase {
         uint256 expectedFee = (expectedPayout * 50) / 10000;
         assertEq(usdc.balanceOf(feeRecipient), expectedFee, "Fee recipient should receive fee");
         assertEq(usdc.balanceOf(recipient), expectedPayout - expectedFee, "Recipient should receive payout minus fee");
-    }
-
-    function test_withdrawWithZeroFee() public {
-        // No fee set (default = 0)
-        (bytes32 _commitment, bytes32 _nullifier, bytes32 _secret) = _getCommitment();
-        bytes memory signature = _getSignature(depositor);
-        uint256 yieldIndex = privacyVault.getCurrentBucketedYieldIndex();
-        bytes32 finalCommitment = privacyVault.hashLeftRight(_commitment, bytes32(yieldIndex));
-        vm.prank(depositor);
-        privacyVault.depositWithAuthorization(_commitment, signature);
-
-        bytes32[] memory leaves = new bytes32[](1);
-        leaves[0] = finalCommitment;
-        (bytes memory _proof, bytes32[] memory _publicInputs) =
-            _getProof(_nullifier, _secret, recipient, bytes32(yieldIndex), leaves, false);
-
-        privacyVault.withdraw(
-            _proof,
-            _publicInputs[0],
-            _publicInputs[1],
-            _publicInputs[2],
-            payable(address(uint160(uint256(_publicInputs[3])))),
-            uint256(_publicInputs[4])
-        );
-
-        assertEq(usdc.balanceOf(recipient), privacyVault.DENOMINATION(), "Recipient should receive full payout with zero fee");
     }
 
     function test_withdrawWithYieldBuckets() public {

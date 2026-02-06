@@ -3,7 +3,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { base, baseSepolia } from "viem/chains";
 import type { Config } from "./config.js";
 
-const DEPLOY_BLOCK = 37218921n;
+const DEPLOY_BLOCK = 37317095n;
 
 /**
  * PrivacyVault contract ABI (matching on-chain contract)
@@ -24,6 +24,7 @@ const PRIVACY_VAULT_ABI = [
             { name: "_proof", type: "bytes" },
             { name: "_root", type: "bytes32" },
             { name: "_nullifierHash", type: "bytes32" },
+            { name: "_collateralNullifierHash", type: "bytes32" },
             { name: "_recipient", type: "address" },
             { name: "_yieldIndex", type: "uint256" },
         ],
@@ -33,8 +34,86 @@ const PRIVACY_VAULT_ABI = [
         type: "function",
     },
     {
+        inputs: [
+            { name: "_proof", type: "bytes" },
+            { name: "_root", type: "bytes32" },
+            { name: "_collateralNullifierHash", type: "bytes32" },
+            { name: "_recipient", type: "address" },
+            { name: "_yieldIndex", type: "uint256" },
+            { name: "_borrowAmount", type: "uint256" },
+        ],
+        name: "borrow",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function",
+    },
+    {
+        inputs: [
+            { name: "_collateralNullifierHash", type: "bytes32" },
+            { name: "_receiveAuthorization", type: "bytes" },
+        ],
+        name: "repayWithAuthorization",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function",
+    },
+    {
+        inputs: [{ name: "_collateralNullifierHash", type: "bytes32" }],
+        name: "getDebt",
+        outputs: [{ name: "", type: "uint256" }],
+        stateMutability: "view",
+        type: "function",
+    },
+    {
+        inputs: [{ name: "", type: "bytes32" }],
+        name: "s_loans",
+        outputs: [
+            { name: "principalAmount", type: "uint256" },
+            { name: "borrowYieldIndex", type: "uint256" },
+            { name: "depositYieldIndex", type: "uint256" },
+            { name: "active", type: "bool" },
+        ],
+        stateMutability: "view",
+        type: "function",
+    },
+    {
+        inputs: [{ name: "", type: "bytes32" }],
+        name: "s_collateralSpent",
+        outputs: [{ name: "", type: "bool" }],
+        stateMutability: "view",
+        type: "function",
+    },
+    {
         inputs: [],
         name: "getCurrentBucketedYieldIndex",
+        outputs: [{ name: "", type: "uint256" }],
+        stateMutability: "view",
+        type: "function",
+    },
+    {
+        inputs: [],
+        name: "DENOMINATION",
+        outputs: [{ name: "", type: "uint256" }],
+        stateMutability: "view",
+        type: "function",
+    },
+    {
+        inputs: [],
+        name: "s_withdrawalFeeBps",
+        outputs: [{ name: "", type: "uint256" }],
+        stateMutability: "view",
+        type: "function",
+    },
+    {
+        inputs: [],
+        name: "s_feeRecipient",
+        outputs: [{ name: "", type: "address" }],
+        stateMutability: "view",
+        type: "function",
+    },
+    {
+        inputs: [{ name: "_collateralNullifierHash", type: "bytes32" }],
+        name: "getRepaymentAmount",
         outputs: [{ name: "", type: "uint256" }],
         stateMutability: "view",
         type: "function",
@@ -67,6 +146,7 @@ export interface VaultWithdrawRequest {
     proof: string; // ABI-encoded proof bytes
     root: string; // bytes32 hex string
     nullifierHash: string; // bytes32 hex string
+    collateralNullifierHash: string; // bytes32 hex string
     recipient: string; // address
     yieldIndex: string; // uint256 as hex or decimal string
     vaultAddress: string; // vault contract address
@@ -80,6 +160,28 @@ export interface VaultWithdrawResponse {
     transactionHash: string;
     blockNumber?: number;
     error?: string;
+}
+
+/**
+ * Request body for vault borrow
+ */
+export interface VaultBorrowRequest {
+    proof: string;
+    root: string;
+    collateralNullifierHash: string;
+    recipient: string;
+    yieldIndex: string;
+    borrowAmount: string;
+    vaultAddress: string;
+}
+
+/**
+ * Request body for vault repay
+ */
+export interface VaultRepayRequest {
+    collateralNullifierHash: string;
+    encodedAuth: string;
+    vaultAddress: string;
 }
 
 /**
@@ -206,6 +308,7 @@ export async function relayVaultWithdraw(
             request.proof as `0x${string}`,
             request.root as `0x${string}`,
             request.nullifierHash as `0x${string}`,
+            request.collateralNullifierHash as `0x${string}`,
             request.recipient as Address,
             BigInt(request.yieldIndex),
         ]);
@@ -229,6 +332,236 @@ export async function relayVaultWithdraw(
         return {
             success: false,
             transactionHash: "",
+            error: error instanceof Error ? error.message : "Unknown error",
+        };
+    }
+}
+
+/**
+ * Executes a vault borrow via relayer
+ */
+export async function relayVaultBorrow(
+    request: VaultBorrowRequest,
+    vaultConfig: Config["vault"],
+): Promise<VaultWithdrawResponse> {
+    try {
+        if (!vaultConfig.relayerPrivateKey) {
+            throw new Error("Relayer private key not configured");
+        }
+
+        const chain = vaultConfig.chainId === 8453 ? base : baseSepolia;
+        const rpcUrl = getRpcUrl(vaultConfig.chainId);
+
+        const rawKey = vaultConfig.relayerPrivateKey.startsWith("0x")
+            ? vaultConfig.relayerPrivateKey
+            : `0x${vaultConfig.relayerPrivateKey}`;
+        const account = privateKeyToAccount(rawKey as `0x${string}`);
+        const walletClient = createWalletClient({
+            account,
+            chain,
+            transport: http(rpcUrl),
+        });
+
+        const vaultContract = getContract({
+            address: request.vaultAddress as Address,
+            abi: PRIVACY_VAULT_ABI,
+            client: walletClient,
+        });
+
+        const transactionHash = await vaultContract.write.borrow([
+            request.proof as `0x${string}`,
+            request.root as `0x${string}`,
+            request.collateralNullifierHash as `0x${string}`,
+            request.recipient as Address,
+            BigInt(request.yieldIndex),
+            BigInt(request.borrowAmount),
+        ]);
+
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(rpcUrl),
+        });
+
+        const receipt = await publicClient.waitForTransactionReceipt({
+            hash: transactionHash,
+        });
+
+        return {
+            success: receipt.status === "success",
+            transactionHash,
+            blockNumber: Number(receipt.blockNumber),
+        };
+    } catch (error) {
+        console.error("Error relaying vault borrow:", error instanceof Error ? error.message : "Unknown error");
+        return {
+            success: false,
+            transactionHash: "",
+            error: error instanceof Error ? error.message : "Unknown error",
+        };
+    }
+}
+
+/**
+ * Executes a vault repay via relayer
+ */
+export async function relayVaultRepay(
+    request: VaultRepayRequest,
+    vaultConfig: Config["vault"],
+): Promise<VaultWithdrawResponse> {
+    try {
+        if (!vaultConfig.relayerPrivateKey) {
+            throw new Error("Relayer private key not configured");
+        }
+
+        const chain = vaultConfig.chainId === 8453 ? base : baseSepolia;
+        const rpcUrl = getRpcUrl(vaultConfig.chainId);
+
+        const rawKey = vaultConfig.relayerPrivateKey.startsWith("0x")
+            ? vaultConfig.relayerPrivateKey
+            : `0x${vaultConfig.relayerPrivateKey}`;
+        const account = privateKeyToAccount(rawKey as `0x${string}`);
+        const walletClient = createWalletClient({
+            account,
+            chain,
+            transport: http(rpcUrl),
+        });
+
+        const vaultContract = getContract({
+            address: request.vaultAddress as Address,
+            abi: PRIVACY_VAULT_ABI,
+            client: walletClient,
+        });
+
+        const transactionHash = await vaultContract.write.repayWithAuthorization([
+            request.collateralNullifierHash as `0x${string}`,
+            request.encodedAuth as `0x${string}`,
+        ]);
+
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(rpcUrl),
+        });
+
+        const receipt = await publicClient.waitForTransactionReceipt({
+            hash: transactionHash,
+        });
+
+        return {
+            success: receipt.status === "success",
+            transactionHash,
+            blockNumber: Number(receipt.blockNumber),
+        };
+    } catch (error) {
+        console.error("Error relaying vault repay:", error instanceof Error ? error.message : "Unknown error");
+        return {
+            success: false,
+            transactionHash: "",
+            error: error instanceof Error ? error.message : "Unknown error",
+        };
+    }
+}
+
+/**
+ * Reads loan info from the vault contract
+ */
+export async function getLoanInfo(
+    vaultAddress: string,
+    collateralNullifierHash: string,
+    vaultConfig: Config["vault"],
+): Promise<{ debt: string; fee: string; repaymentAmount: string; loan: { principalAmount: string; borrowYieldIndex: string; depositYieldIndex: string; active: boolean } | null; error?: string }> {
+    try {
+        const chain = vaultConfig.chainId === 8453 ? base : baseSepolia;
+        const rpcUrl = getRpcUrl(vaultConfig.chainId);
+
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(rpcUrl),
+        });
+
+        const debt = await publicClient.readContract({
+            address: vaultAddress as Address,
+            abi: PRIVACY_VAULT_ABI,
+            functionName: "getDebt",
+            args: [collateralNullifierHash as `0x${string}`],
+        });
+
+        const repaymentAmount = await publicClient.readContract({
+            address: vaultAddress as Address,
+            abi: PRIVACY_VAULT_ABI,
+            functionName: "getRepaymentAmount",
+            args: [collateralNullifierHash as `0x${string}`],
+        });
+
+        const loanData = await publicClient.readContract({
+            address: vaultAddress as Address,
+            abi: PRIVACY_VAULT_ABI,
+            functionName: "s_loans",
+            args: [collateralNullifierHash as `0x${string}`],
+        });
+
+        const [principalAmount, borrowYieldIndex, depositYieldIndex, active] = loanData;
+        const fee = repaymentAmount - debt;
+
+        return {
+            debt: debt.toString(),
+            fee: fee.toString(),
+            repaymentAmount: repaymentAmount.toString(),
+            loan: active ? {
+                principalAmount: principalAmount.toString(),
+                borrowYieldIndex: borrowYieldIndex.toString(),
+                depositYieldIndex: depositYieldIndex.toString(),
+                active,
+            } : null,
+        };
+    } catch (error) {
+        console.error("Error fetching loan info:", error instanceof Error ? error.message : "Unknown error");
+        return {
+            debt: "0",
+            fee: "0",
+            repaymentAmount: "0",
+            loan: null,
+            error: error instanceof Error ? error.message : "Unknown error",
+        };
+    }
+}
+
+/**
+ * Reads the relayer fee configuration from the vault contract
+ */
+export async function getFeeInfo(
+    vaultAddress: string,
+    vaultConfig: Config["vault"],
+): Promise<{ feeBps: string; feeRecipient: string; error?: string }> {
+    try {
+        const chain = vaultConfig.chainId === 8453 ? base : baseSepolia;
+        const rpcUrl = getRpcUrl(vaultConfig.chainId);
+
+        const publicClient = createPublicClient({
+            chain,
+            transport: http(rpcUrl),
+        });
+
+        const feeBps = await publicClient.readContract({
+            address: vaultAddress as Address,
+            abi: PRIVACY_VAULT_ABI,
+            functionName: "s_withdrawalFeeBps",
+        });
+
+        const feeRecipient = await publicClient.readContract({
+            address: vaultAddress as Address,
+            abi: PRIVACY_VAULT_ABI,
+            functionName: "s_feeRecipient",
+        });
+
+        return {
+            feeBps: feeBps.toString(),
+            feeRecipient: feeRecipient as string,
+        };
+    } catch (error) {
+        console.error("Error fetching fee info:", error instanceof Error ? error.message : "Unknown error");
+        return {
+            feeBps: "0",
+            feeRecipient: "",
             error: error instanceof Error ? error.message : "Unknown error",
         };
     }
