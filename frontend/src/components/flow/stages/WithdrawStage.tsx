@@ -41,6 +41,7 @@ function Gear({
   innerR,
   teeth,
   thickness,
+  color: _color,
   glowColor,
   position,
   rotationOffset = 0,
@@ -51,6 +52,7 @@ function Gear({
   innerR: number
   teeth: number
   thickness: number
+  color: number
   glowColor: number
   position: [number, number, number]
   rotationOffset?: number
@@ -181,14 +183,82 @@ function DashedPath({
   )
 }
 
+// ==================== POOL PARTICLES ====================
+const POOL_PARTICLE_COUNT = 60
+
+function PoolParticles({ opacity }: { opacity: number }) {
+  const groupRef = useRef<THREE.Group>(null)
+
+  const particles = useMemo(() => {
+    const cols = [0x00e5cc, 0x0affdb, 0x00b8a3, 0xffffff]
+    return Array.from({ length: POOL_PARTICLE_COUNT }, () => {
+      const th = Math.random() * Math.PI * 2
+      const ph = Math.acos(2 * Math.random() - 1)
+      const r = Math.pow(Math.random(), 0.5) * 1.3
+      const x = r * Math.sin(ph) * Math.cos(th)
+      const y = r * Math.sin(ph) * Math.sin(th)
+      const z = r * Math.cos(ph)
+      return {
+        base: new THREE.Vector3(x, y, z),
+        size: 0.015 + Math.random() * 0.04,
+        color: cols[Math.floor(Math.random() * 4)],
+        speed: 0.15 + Math.random() * 0.5,
+        radius: 0.08 + Math.random() * 0.25,
+        phase: Math.random() * Math.PI * 2,
+        axis: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize(),
+        drift: Math.random() * Math.PI * 2,
+        pulseSpeed: 1 + Math.random() * 3,
+        pulsePhase: Math.random() * Math.PI * 2,
+        baseOp: 0.5 + Math.random() * 0.5
+      }
+    })
+  }, [])
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) return
+    const t = clock.getElapsedTime()
+    groupRef.current.children.forEach((child, i) => {
+      if (child instanceof THREE.Mesh) {
+        const p = particles[i]
+        const t2 = t * p.speed
+        let nx = p.base.x + Math.sin(t2 + p.phase) * p.radius * p.axis.x + Math.cos(t2 * 0.7 + p.drift) * p.radius * 0.4
+        let ny = p.base.y + Math.sin(t2 + p.phase + 1) * p.radius * p.axis.y
+        let nz = p.base.z + Math.cos(t2 + p.phase) * p.radius * p.axis.z
+        const d = Math.sqrt(nx * nx + ny * ny + nz * nz)
+        if (d > 1.35) {
+          const s = 1.35 / d
+          nx *= s
+          ny *= s
+          nz *= s
+        }
+        child.position.set(nx, ny, nz)
+        const mat = child.material as THREE.MeshBasicMaterial
+        mat.opacity = p.baseOp * (0.6 + 0.4 * Math.sin(t * p.pulseSpeed + p.pulsePhase)) * opacity
+      }
+    })
+  })
+
+  return (
+    <group ref={groupRef}>
+      {particles.map((p, i) => (
+        <mesh key={i} position={[p.base.x, p.base.y, p.base.z]} scale={p.size}>
+          <sphereGeometry args={[1, 8, 8]} />
+          <meshBasicMaterial color={p.color} transparent opacity={p.baseOp * opacity} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
 // ==================== USDC LOGO FACE ====================
 function UsdcLogoFace({ zOffset, flipY, opacity }: { zOffset: number; flipY: boolean; opacity: number }) {
   const extrusion = 0.02
 
-  // Left arc
+  // Left arc - curves from top-left to bottom-left like (
   const leftArcGeometry = useMemo(() => {
     const points: THREE.Vector3[] = []
     const radius = 0.18
+    // Arc from ~120° to ~240° (left side parenthesis)
     for (let i = 0; i <= 24; i++) {
       const angle = (Math.PI * 0.65) + (i / 24) * (Math.PI * 0.7)
       const x = Math.cos(angle) * radius
@@ -199,10 +269,11 @@ function UsdcLogoFace({ zOffset, flipY, opacity }: { zOffset: number; flipY: boo
     return new THREE.TubeGeometry(path, 24, 0.018, 8, false)
   }, [])
 
-  // Right arc
+  // Right arc - curves from top-right to bottom-right like )
   const rightArcGeometry = useMemo(() => {
     const points: THREE.Vector3[] = []
     const radius = 0.18
+    // Arc from ~-60° to ~60° (right side parenthesis)
     for (let i = 0; i <= 24; i++) {
       const angle = (-Math.PI * 0.35) + (i / 24) * (Math.PI * 0.7)
       const x = Math.cos(angle) * radius
@@ -215,6 +286,7 @@ function UsdcLogoFace({ zOffset, flipY, opacity }: { zOffset: number; flipY: boo
 
   return (
     <group position={[0, 0, zOffset]} rotation={flipY ? [0, Math.PI, 0] : [0, 0, 0]}>
+      {/* $ symbol in center */}
       <Text
         position={[0, 0, extrusion]}
         fontSize={0.2}
@@ -225,6 +297,7 @@ function UsdcLogoFace({ zOffset, flipY, opacity }: { zOffset: number; flipY: boo
       >
         $
       </Text>
+      {/* Left arc ( */}
       <mesh geometry={leftArcGeometry} position={[0, 0, extrusion]}>
         <meshStandardMaterial
           color={0xffffff}
@@ -234,6 +307,7 @@ function UsdcLogoFace({ zOffset, flipY, opacity }: { zOffset: number; flipY: boo
           opacity={opacity}
         />
       </mesh>
+      {/* Right arc ) */}
       <mesh geometry={rightArcGeometry} position={[0, 0, extrusion]}>
         <meshStandardMaterial
           color={0xffffff}
@@ -248,22 +322,26 @@ function UsdcLogoFace({ zOffset, flipY, opacity }: { zOffset: number; flipY: boo
 }
 
 // ==================== USDC COIN ====================
-function UsdcCoin({ position, opacity, scale = 1 }: { position: [number, number, number]; opacity: number; scale?: number }) {
+function UsdcCoin({ position, opacity }: { position: [number, number, number]; opacity: number }) {
   const groupRef = useRef<THREE.Group>(null)
   const shimmerRingsRef = useRef<THREE.Group>(null)
 
   useFrame(({ clock }) => {
     if (groupRef.current) {
+      // Slower rotation speed
       groupRef.current.rotation.y = clock.getElapsedTime() * 1.5
     }
+    // Animate shimmer rings
     if (shimmerRingsRef.current) {
       const t = clock.getElapsedTime()
       shimmerRingsRef.current.children.forEach((child, i) => {
         if (child instanceof THREE.Mesh) {
           const mat = child.material as THREE.MeshBasicMaterial
+          // Staggered pulsing opacity for shimmer effect
           mat.opacity = (0.15 + 0.25 * Math.sin(t * 4 + i * 1.2)) * opacity
-          const s = 1 + 0.08 * Math.sin(t * 3 + i * 0.8)
-          child.scale.setScalar(s)
+          // Subtle scale breathing
+          const scale = 1 + 0.08 * Math.sin(t * 3 + i * 0.8)
+          child.scale.setScalar(scale)
         }
       })
     }
@@ -272,7 +350,8 @@ function UsdcCoin({ position, opacity, scale = 1 }: { position: [number, number,
   if (opacity <= 0.01) return null
 
   return (
-    <group ref={groupRef} position={position} scale={scale}>
+    <group ref={groupRef} position={position}>
+      {/* Coin body - vertical orientation */}
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.35, 0.35, 0.08, 48]} />
         <meshStandardMaterial
@@ -285,6 +364,7 @@ function UsdcCoin({ position, opacity, scale = 1 }: { position: [number, number,
           opacity={opacity}
         />
       </mesh>
+      {/* Coin rim - vertical */}
       <mesh>
         <torusGeometry args={[0.35, 0.03, 16, 48]} />
         <meshStandardMaterial
@@ -297,8 +377,11 @@ function UsdcCoin({ position, opacity, scale = 1 }: { position: [number, number,
           opacity={opacity}
         />
       </mesh>
+      {/* USDC logo on front face */}
       <UsdcLogoFace zOffset={0.045} flipY={false} opacity={opacity} />
+      {/* USDC logo on back face */}
       <UsdcLogoFace zOffset={-0.045} flipY={true} opacity={opacity} />
+      {/* Shimmer rings around the edge */}
       <group ref={shimmerRingsRef}>
         {[0, 1, 2, 3].map((i) => (
           <mesh key={i} rotation={[0, 0, (i * Math.PI) / 4]}>
@@ -315,49 +398,58 @@ function UsdcCoin({ position, opacity, scale = 1 }: { position: [number, number,
 // ==================== MAIN WITHDRAW STAGE ====================
 export function WithdrawStage({ progress }: StageProps) {
   const groupRef = useRef<THREE.Group>(null)
+  const wireRef = useRef<THREE.Mesh>(null)
+  const coreRef = useRef<THREE.Mesh>(null)
+  const haloRef = useRef<THREE.Mesh>(null)
   const haloRing1Ref = useRef<THREE.Mesh>(null)
   const haloRing2Ref = useRef<THREE.Mesh>(null)
   const userRef = useRef<THREE.Group>(null)
 
-  // Visibility: show when progress is in 0.8-1.0 range (stage 5)
   const isVisible = progress >= 0.73 && progress <= 1.0
   const opacity = progress < 0.8 ? Math.max(0, (progress - 0.73) / 0.07) : 1
 
-  // Positions - scaled down and centered
-  const GEAR_POS = useMemo(() => new THREE.Vector3(-3.5, 0.3, 0), [])
-  const USER_POS = useMemo(() => new THREE.Vector3(3.5, -0.2, 0), [])
+  // Positions: GEAR (left) → POOL (center) → USER (right)
+  const GEAR_POS = useMemo(() => new THREE.Vector3(-6.5, 0.8, -2), [])
+  const POOL_POS = useMemo(() => new THREE.Vector3(0, 0.6, 0), [])
+  const USER_POS = useMemo(() => new THREE.Vector3(6, 0, 2), [])
 
-  // Build curve for coin path (gears → user)
-  const coinCurve = useMemo(() => {
-    const start = GEAR_POS.clone()
-    const end = new THREE.Vector3(USER_POS.x, USER_POS.y + 0.4, USER_POS.z)
-    const arcHeight = 0.8
+  // Build full curve for coin path: GEAR → POOL → USER
+  const fullCurve = useMemo(() => {
+    const path1Start = GEAR_POS.clone()
+    const path1End = POOL_POS.clone()
+    const path2Start = POOL_POS.clone()
+    const path2End = new THREE.Vector3(USER_POS.x, USER_POS.y + 0.8, USER_POS.z)
 
-    const points: THREE.Vector3[] = []
-    const segs = 80
-    for (let i = 0; i <= segs; i++) {
-      const t = i / segs
-      const x = start.x + (end.x - start.x) * t
-      const z = start.z + (end.z - start.z) * t
-      const y = start.y + (end.y - start.y) * t + Math.sin(t * Math.PI) * arcHeight
-      points.push(new THREE.Vector3(x, y, z))
+    const buildArcPoints = (start: THREE.Vector3, end: THREE.Vector3, arcHeight: number) => {
+      const pts: THREE.Vector3[] = []
+      const segs = 60
+      for (let i = 0; i <= segs; i++) {
+        const t = i / segs
+        const x = start.x + (end.x - start.x) * t
+        const z = start.z + (end.z - start.z) * t
+        const y = start.y + (end.y - start.y) * t + Math.sin(t * Math.PI) * arcHeight
+        pts.push(new THREE.Vector3(x, y, z))
+      }
+      return pts
     }
-    return new THREE.CatmullRomCurve3(points)
-  }, [GEAR_POS, USER_POS])
 
-  // Multiple coins with staggered timing
-  const [coin1Pos, setCoin1Pos] = useState<[number, number, number]>([GEAR_POS.x, GEAR_POS.y, GEAR_POS.z])
-  const [coin1Opacity, setCoin1Opacity] = useState(1)
-  const [coin2Pos, setCoin2Pos] = useState<[number, number, number]>([GEAR_POS.x, GEAR_POS.y, GEAR_POS.z])
-  const [coin2Opacity, setCoin2Opacity] = useState(0)
-  const [coin3Pos, setCoin3Pos] = useState<[number, number, number]>([GEAR_POS.x, GEAR_POS.y, GEAR_POS.z])
-  const [coin3Opacity, setCoin3Opacity] = useState(0)
+    const pts1 = buildArcPoints(path1Start, path1End, 0.8)
+    const pts2 = buildArcPoints(path2Start, path2End, 0.7)
 
-  const coinStates = useRef([
-    { t: 0, fading: false, opacity: 1, waiting: 0 },
-    { t: 0, fading: false, opacity: 0, waiting: 1.2 },
-    { t: 0, fading: false, opacity: 0, waiting: 2.4 }
-  ])
+    return new THREE.CatmullRomCurve3([...pts1, ...pts2.slice(1)])
+  }, [USER_POS, POOL_POS, GEAR_POS])
+
+  // Coin state - use useState for re-renders
+  const [coinPos, setCoinPos] = useState<[number, number, number]>([GEAR_POS.x, GEAR_POS.y, GEAR_POS.z])
+  const [coinOpacity, setCoinOpacity] = useState(1)
+  const coinState = useRef({ t: 0, fading: false, opacity: 1, waiting: 0 })
+
+  // Orbital ring rotations (stored in useMemo to be stable)
+  const orbitalRotations = useMemo(() => [
+    [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI],
+    [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI],
+    [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI],
+  ] as [number, number, number][], [])
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return
@@ -369,7 +461,26 @@ export function WithdrawStage({ progress }: StageProps) {
 
     // User float
     if (userRef.current) {
-      userRef.current.position.y = USER_POS.y + Math.sin(t * 0.8) * 0.04
+      userRef.current.position.y = USER_POS.y + Math.sin(t * 0.8) * 0.06
+    }
+
+    // Wire rotation
+    if (wireRef.current) {
+      wireRef.current.rotation.y = t * 0.05
+      wireRef.current.rotation.x = t * 0.03
+    }
+
+    // Core pulse
+    if (coreRef.current) {
+      const mat = coreRef.current.material as THREE.MeshBasicMaterial
+      mat.opacity = (0.3 + 0.2 * Math.sin(t * 2)) * opacity
+      coreRef.current.scale.setScalar(1 + 0.15 * Math.sin(t * 1.5))
+    }
+
+    // Halo pulse
+    if (haloRef.current) {
+      const mat = haloRef.current.material as THREE.MeshBasicMaterial
+      mat.opacity = (0.1 + 0.05 * Math.sin(t * 1.8)) * opacity
     }
 
     // Halo rings rotation
@@ -380,97 +491,45 @@ export function WithdrawStage({ progress }: StageProps) {
       haloRing2Ref.current.rotation.z = -t * 0.07
     }
 
-    // Animate coins
-    const setters = [
-      { setPos: setCoin1Pos, setOp: setCoin1Opacity },
-      { setPos: setCoin2Pos, setOp: setCoin2Opacity },
-      { setPos: setCoin3Pos, setOp: setCoin3Opacity }
-    ]
-
-    coinStates.current.forEach((cs, i) => {
-      if (cs.waiting > 0) {
-        cs.waiting -= 0.016
-        cs.opacity = Math.min(1, cs.opacity + 0.04)
-      } else if (!cs.fading) {
-        cs.t += 0.005
-        if (cs.t >= 0.95) {
-          cs.fading = true
-        }
+    // Coin travel animation
+    const cs = coinState.current
+    if (cs.waiting > 0) {
+      cs.waiting -= 0.016
+      cs.opacity = Math.min(1, cs.opacity + 0.04)
+    } else if (!cs.fading) {
+      cs.t += 0.004
+      if (cs.t >= 0.95) {
+        cs.fading = true
       }
+    }
 
-      if (cs.fading) {
-        cs.opacity -= 0.05
-        if (cs.opacity <= 0) {
-          cs.opacity = 0
-          cs.t = 0
-          cs.fading = false
-          cs.waiting = 0.8
-        }
+    if (cs.fading) {
+      cs.opacity -= 0.04
+      if (cs.opacity <= 0) {
+        cs.opacity = 0
+        cs.t = 0
+        cs.fading = false
+        cs.waiting = 0.5
       }
+    }
 
-      const cp = coinCurve.getPoint(Math.min(cs.t, 1))
-      setters[i].setPos([cp.x, cp.y, cp.z])
-      setters[i].setOp(cs.opacity * opacity)
-    })
+    // Position coin on curve
+    const cp = fullCurve.getPoint(Math.min(cs.t, 1))
+    setCoinPos([cp.x, cp.y, cp.z])
+    setCoinOpacity(cs.opacity * opacity)
   })
 
   if (!isVisible) return null
 
-  // Gear speeds
+  // Gear speeds (teeth must mesh)
   const gear1Speed = 0.4
   const gear2Speed = -gear1Speed * (16 / 12)
   const gear3Speed = -gear1Speed * (16 / 10)
 
   return (
     <group ref={groupRef}>
-      {/* ── Gears Assembly (Yield Engine) ── */}
-      <group position={GEAR_POS.toArray()} scale={0.55}>
-        <Gear
-          outerR={1.2}
-          innerR={0.9}
-          teeth={16}
-          thickness={0.25}
-          glowColor={0x00e5cc}
-          position={[0, 0, 0]}
-          speed={gear1Speed}
-          opacity={opacity}
-        />
-        <Gear
-          outerR={0.8}
-          innerR={0.6}
-          teeth={12}
-          thickness={0.22}
-          glowColor={0x00e5cc}
-          position={[1.65, 0.6, 0.3]}
-          speed={gear2Speed}
-          rotationOffset={0.155}
-          opacity={opacity}
-        />
-        <Gear
-          outerR={0.55}
-          innerR={0.4}
-          teeth={10}
-          thickness={0.18}
-          glowColor={0x00e5cc}
-          position={[-1.3, 0.8, -0.2]}
-          speed={gear3Speed}
-          rotationOffset={0.1}
-          opacity={opacity}
-        />
-        {/* Halo rings */}
-        <mesh ref={haloRing1Ref} position={[0, 0.3, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[2.2, 0.02, 8, 64]} />
-          <meshBasicMaterial color={0x00e5cc} transparent opacity={0.25 * opacity} />
-        </mesh>
-        <mesh ref={haloRing2Ref} position={[0, 0.3, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[2.5, 0.015, 8, 64]} />
-          <meshBasicMaterial color={0x00e5cc} transparent opacity={0.18 * opacity} />
-        </mesh>
-        <pointLight position={[0, 0, 0]} intensity={1.8 * opacity} color={0x00e5cc} distance={8} />
-      </group>
-
       {/* ── User Avatar ── */}
-      <group ref={userRef} position={USER_POS.toArray()} scale={0.55}>
+      <group ref={userRef} position={USER_POS.toArray()}>
         {/* Head */}
         <mesh position={[0, 1.45, 0]}>
           <sphereGeometry args={[0.5, 48, 48]} />
@@ -513,26 +572,133 @@ export function WithdrawStage({ progress }: StageProps) {
         <pointLight position={[0, 1, 1]} intensity={1.2 * opacity} color={0x00e5cc} distance={5} />
       </group>
 
-      {/* ── Dashed Path ── */}
+      {/* ── Privacy Pool ── */}
+      <group position={POOL_POS.toArray()}>
+        {/* Glass sphere - using standard material for better visibility */}
+        <mesh>
+          <sphereGeometry args={[1.6, 96, 96]} />
+          <meshStandardMaterial
+            color={0x00e5cc}
+            emissive={0x00e5cc}
+            emissiveIntensity={0.3}
+            metalness={0.1}
+            roughness={0.1}
+            transparent
+            opacity={0.35 * opacity}
+          />
+        </mesh>
+        {/* Inner glow sphere */}
+        <mesh>
+          <sphereGeometry args={[1.5, 48, 48]} />
+          <meshBasicMaterial color={0x00e5cc} transparent opacity={0.15 * opacity} side={THREE.BackSide} />
+        </mesh>
+        {/* Wireframe */}
+        <mesh ref={wireRef}>
+          <icosahedronGeometry args={[1.63, 3]} />
+          <meshBasicMaterial color={0x00e5cc} wireframe transparent opacity={0.35 * opacity} />
+        </mesh>
+        {/* Core */}
+        <mesh ref={coreRef}>
+          <sphereGeometry args={[0.25, 32, 32]} />
+          <meshBasicMaterial color={0x00e5cc} transparent opacity={0.7 * opacity} />
+        </mesh>
+        {/* Halo */}
+        <mesh ref={haloRef}>
+          <sphereGeometry args={[0.5, 32, 32]} />
+          <meshBasicMaterial color={0x00e5cc} transparent opacity={0.25 * opacity} />
+        </mesh>
+        {/* Orbital rings */}
+        {orbitalRotations.map((rot, i) => (
+          <mesh key={i} rotation={rot}>
+            <torusGeometry args={[0.6 + i * 0.35, 0.012, 8, 128]} />
+            <meshBasicMaterial color={0x00e5cc} transparent opacity={(0.25 + i * 0.08) * opacity} />
+          </mesh>
+        ))}
+        {/* Pool particles */}
+        <PoolParticles opacity={opacity} />
+        <pointLight position={[0, 0, 0]} intensity={2.0 * opacity} color={0x00e5cc} distance={8} />
+      </group>
+
+      {/* ── Gears Assembly ── */}
+      <group position={GEAR_POS.toArray()}>
+        {/* Gear 1 — Large */}
+        <Gear
+          outerR={1.2}
+          innerR={0.9}
+          teeth={16}
+          thickness={0.25}
+          color={0x0a3a5a}
+          glowColor={0x00e5cc}
+          position={[0, 0, 0]}
+          speed={gear1Speed}
+          opacity={opacity}
+        />
+        {/* Gear 2 — Medium */}
+        <Gear
+          outerR={0.8}
+          innerR={0.6}
+          teeth={12}
+          thickness={0.22}
+          color={0x1a3a5a}
+          glowColor={0x00e5cc}
+          position={[1.65, 0.6, 0.3]}
+          speed={gear2Speed}
+          rotationOffset={0.155}
+          opacity={opacity}
+        />
+        {/* Gear 3 — Small */}
+        <Gear
+          outerR={0.55}
+          innerR={0.4}
+          teeth={10}
+          thickness={0.18}
+          color={0x1a2a4a}
+          glowColor={0x00e5cc}
+          position={[-1.3, 0.8, -0.2]}
+          speed={gear3Speed}
+          rotationOffset={0.1}
+          opacity={opacity}
+        />
+        {/* Halo rings */}
+        <mesh ref={haloRing1Ref} position={[0, 0.3, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[2.2, 0.02, 8, 64]} />
+          <meshBasicMaterial color={0x00e5cc} transparent opacity={0.25 * opacity} />
+        </mesh>
+        <mesh ref={haloRing2Ref} position={[0, 0.3, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[2.5, 0.015, 8, 64]} />
+          <meshBasicMaterial color={0x00e5cc} transparent opacity={0.18 * opacity} />
+        </mesh>
+        <pointLight position={[0, 0, 0]} intensity={1.8 * opacity} color={0x00e5cc} distance={8} />
+      </group>
+
+      {/* ── Dashed Paths ── */}
       <DashedPath
         start={GEAR_POS}
-        end={new THREE.Vector3(USER_POS.x, USER_POS.y + 0.4, USER_POS.z)}
+        end={POOL_POS}
+        arcHeight={0.7}
+        dashCount={25}
+        opacity={opacity}
+      />
+      <DashedPath
+        start={POOL_POS}
+        end={new THREE.Vector3(USER_POS.x, USER_POS.y + 0.8, USER_POS.z)}
         arcHeight={0.8}
-        dashCount={20}
+        dashCount={25}
         opacity={opacity}
       />
 
-      {/* ── USDC Coins (multiple, staggered) ── */}
-      <UsdcCoin position={coin1Pos} opacity={coin1Opacity} scale={0.6} />
-      <UsdcCoin position={coin2Pos} opacity={coin2Opacity} scale={0.5} />
-      <UsdcCoin position={coin3Pos} opacity={coin3Opacity} scale={0.4} />
+      {/* ── USDC Coin ── */}
+      <UsdcCoin position={coinPos} opacity={coinOpacity} />
 
       {/* ── Labels ── */}
-      <Text position={[GEAR_POS.x, -1.3, GEAR_POS.z]} fontSize={0.28} color="#00e5cc" anchorX="center" fillOpacity={0.8 * opacity}>
-        YIELD ENGINE
-      </Text>
-      <Text position={[USER_POS.x, -1.3, USER_POS.z]} fontSize={0.28} color="#00e5cc" anchorX="center" fillOpacity={0.8 * opacity}>
+      <Text position={[USER_POS.x, -1.5, USER_POS.z]} fontSize={0.4} color="#00e5cc" anchorX="center" fillOpacity={0.8 * opacity}>
         USER
+      </Text>
+      <Text position={[POOL_POS.x, -1.8, POOL_POS.z]} fontSize={0.4} color="#00e5cc" anchorX="center" fillOpacity={0.8 * opacity}>
+        PRIVACY VAULT
+      </Text>
+      <Text position={[GEAR_POS.x, -1.5, GEAR_POS.z]} fontSize={0.4} color="#00e5cc" anchorX="center" fillOpacity={0.8 * opacity}>
+        YIELD ENGINE
       </Text>
     </group>
   )

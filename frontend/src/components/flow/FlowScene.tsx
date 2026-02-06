@@ -16,7 +16,7 @@ const cameraPositions: [number, number, number][] = [
   [0, 0, 7],     // commitment
   [0, 0.5, 10],  // merkle tree (pull back)
   [0, 0, 7],     // proof
-  [0, 0, 8],     // withdraw
+  [-3, 1, 11.5],    // withdraw (left side closer, yield engine prominent)
 ]
 
 const cameraTargets: [number, number, number][] = [
@@ -24,7 +24,7 @@ const cameraTargets: [number, number, number][] = [
   [0, 0, 0],
   [0, 1, 0],
   [0, 0, 0],
-  [0, 0, 0],
+  [0, 0.3, 0],   // withdraw (frontal)
 ]
 
 function lerpVec3(a: number[], b: number[], t: number): [number, number, number] {

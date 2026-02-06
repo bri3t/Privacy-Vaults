@@ -43,7 +43,8 @@ export function useUsdcBalance(publicClient: any, owner: Address, usdcAddress?: 
 
       try {
         const balance = await getUSDCBalance(publicClient as BalanceClient, owner, usdcAddress);
-        setFormattedBalance(formatUnits(balance, 6));
+        const raw = formatUnits(balance, 6);
+        setFormattedBalance(parseFloat(raw).toFixed(2));
       } catch (error) {
         console.error("Failed to check USDC balance", error);
       } finally {
