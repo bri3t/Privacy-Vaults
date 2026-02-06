@@ -10,8 +10,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IAavePool} from "./interfaces/IAavePool.sol";
 import {IMorphoVault} from "./interfaces/IMorphoPool.sol";
+import {IPrivacyVault} from "./interfaces/IPrivacyVault.sol";
 
-contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard, Ownable {
+contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard, Ownable, IPrivacyVault {
     using SafeERC20 for IERC20;
 
     // keccak256("receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)")[0:4]
@@ -44,38 +45,10 @@ contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard, Ownable {
     mapping(bytes32 => bool) public s_nullifierHashes; // nullifierHash => bool (prevents double spend of notes)
     mapping(bytes32 => bool) public s_commitments; // commitment => bool (prevents duplicate deposits)
 
-    struct Loan {
-        uint256 principalAmount;
-        uint256 borrowYieldIndex; // blended yield index at time of borrow (for interest calculation)
-        uint256 depositYieldIndex;
-        bool active;
-    }
-
     mapping(bytes32 => Loan) public s_loans; // collateralNullifierHash => Loan
     mapping(bytes32 => bool) public s_collateralSpent; // collateralNullifierHash => bool (prevents borrow if deposit already withdrawn)
     uint256 public totalBorrowed; // for monitoring total outstanding debt
 
-    event DepositWithAuthorization(bytes32 indexed commitment, uint32 leafIndex, uint256 timestamp, uint256 yieldIndex);
-    event Withdrawal(address to, bytes32 nullifierHash, uint256 payout);
-    event PoolUpdated(address newAavePool, address newMorphoVault);
-    event Borrow(bytes32 indexed collateralNullifierHash, address borrower, uint256 amount, uint256 yieldIndex);
-    event Repay(bytes32 indexed collateralNullifierHash, address repayer, uint256 amount);
-
-    error PrivacyVault__DepositValueMismatch(uint256 expected, uint256 actual);
-    error PrivacyVault__InvalidRecipient(address expected, address actual);
-    error PrivacyVault__PaymentFailed(address recipient, uint256 amount);
-    error PrivacyVault__NoteAlreadySpent(bytes32 nullifierHash);
-    error PrivacyVault__UnknownRoot(bytes32 root);
-    error PrivacyVault__InvalidWithdrawProof();
-    error PrivacyVault__CommitmentAlreadyAdded(bytes32 commitment);
-    error PrivacyVault__InvalidYieldIndex();
-    error PrivacyVault__InvalidPoolAddress(string protocol, address provided);
-    error PrivacyVault__LoanAlreadyActive(bytes32 collateralNullifierHash);
-    error PrivacyVault__NoActiveLoan(bytes32 collateralNullifierHash);
-    error PrivacyVault__CollateralLocked(bytes32 collateralNullifierHash);
-    error PrivacyVault__InvalidBorrowProof();
-    error PrivacyVault__BorrowAmountExceedsLTV(uint256 maxBorrow, uint256 requested);
-    error PrivacyVault__DepositAlreadyWithdrawn(bytes32 collateralNullifierHash);
 
     constructor(
         IVerifier _verifier,

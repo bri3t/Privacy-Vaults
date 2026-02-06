@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {TestBase} from "./TestBase.t.sol";
-import {PrivacyVault} from "../src/PrivacyVault.sol";
+import {IPrivacyVault} from "../src/interfaces/IPrivacyVault.sol";
 
 contract PrivacyVaultBorrowTest is TestBase {
     function setUp() public override {
@@ -13,7 +13,8 @@ contract PrivacyVaultBorrowTest is TestBase {
 
     function test_borrow_success() public {
         (bytes32 commitment, bytes32 nullifier, bytes32 secret) = _getCommitment();
-        (bytes32 finalCommitment, bytes32 collateralHash) = _deposit(nullifier, secret);
+        (bytes32 finalCommitment, bytes32 collateralHash) =
+            _deposit(nullifier, secret, depositor, address(privacyVault));
         uint256 yieldIndex = privacyVault.getCurrentBucketedYieldIndex();
         uint256 maxBorrow = _computeMaxBorrow();
         uint256 borrowAmount = maxBorrow / 2;
@@ -44,7 +45,7 @@ contract PrivacyVaultBorrowTest is TestBase {
 
     function test_borrow_exceeds_ltv() public {
         (bytes32 commitment, bytes32 nullifier, bytes32 secret) = _getCommitment();
-        (bytes32 finalCommitment,) = _deposit(nullifier, secret);
+        (bytes32 finalCommitment,) = _deposit(nullifier, secret, depositor, address(privacyVault));
         uint256 yieldIndex = privacyVault.getCurrentBucketedYieldIndex();
         uint256 maxBorrow = _computeMaxBorrow();
 
@@ -66,7 +67,8 @@ contract PrivacyVaultBorrowTest is TestBase {
 
     function test_borrow_after_withdrawal() public {
         (bytes32 commitment, bytes32 nullifier, bytes32 secret) = _getCommitment();
-        (bytes32 finalCommitment, bytes32 collateralHash) = _deposit(nullifier, secret);
+        (bytes32 finalCommitment, bytes32 collateralHash) =
+            _deposit(nullifier, secret, depositor, address(privacyVault));
         uint256 yieldIndex = privacyVault.getCurrentBucketedYieldIndex();
 
         bytes32[] memory leaves = new bytes32[](1);
@@ -90,7 +92,7 @@ contract PrivacyVaultBorrowTest is TestBase {
 
         // Now try to borrow — should revert because collateral is spent
         vm.expectRevert(
-            abi.encodeWithSelector(PrivacyVault.PrivacyVault__DepositAlreadyWithdrawn.selector, collateralHash)
+            abi.encodeWithSelector(IPrivacyVault.PrivacyVault__DepositAlreadyWithdrawn.selector, collateralHash)
         );
         privacyVault.borrow(
             borrowProof,
@@ -104,7 +106,8 @@ contract PrivacyVaultBorrowTest is TestBase {
 
     function test_borrow_double_collateral() public {
         (bytes32 commitment, bytes32 nullifier, bytes32 secret) = _getCommitment();
-        (bytes32 finalCommitment, bytes32 collateralHash) = _deposit(nullifier, secret);
+        (bytes32 finalCommitment, bytes32 collateralHash) =
+            _deposit(nullifier, secret, depositor, address(privacyVault));
         uint256 yieldIndex = privacyVault.getCurrentBucketedYieldIndex();
         uint256 borrowAmount = 10e6;
 
@@ -124,7 +127,7 @@ contract PrivacyVaultBorrowTest is TestBase {
         );
 
         // Second borrow with same collateral should revert (proof is valid but loan already active)
-        vm.expectRevert(abi.encodeWithSelector(PrivacyVault.PrivacyVault__LoanAlreadyActive.selector, collateralHash));
+        vm.expectRevert(abi.encodeWithSelector(IPrivacyVault.PrivacyVault__LoanAlreadyActive.selector, collateralHash));
         privacyVault.borrow(
             proof,
             publicInputs[0],
@@ -137,7 +140,8 @@ contract PrivacyVaultBorrowTest is TestBase {
 
     function test_repay_success() public {
         (bytes32 commitment, bytes32 nullifier, bytes32 secret) = _getCommitment();
-        (bytes32 finalCommitment, bytes32 collateralHash) = _deposit(nullifier, secret);
+        (bytes32 finalCommitment, bytes32 collateralHash) =
+            _deposit(nullifier, secret, depositor, address(privacyVault));
         uint256 yieldIndex = privacyVault.getCurrentBucketedYieldIndex();
         uint256 borrowAmount = 50e6;
 
@@ -174,13 +178,14 @@ contract PrivacyVaultBorrowTest is TestBase {
     function test_repay_no_active_loan() public {
         bytes32 fakeHash = bytes32(uint256(999));
 
-        vm.expectRevert(abi.encodeWithSelector(PrivacyVault.PrivacyVault__NoActiveLoan.selector, fakeHash));
+        vm.expectRevert(abi.encodeWithSelector(IPrivacyVault.PrivacyVault__NoActiveLoan.selector, fakeHash));
         privacyVault.repayWithAuthorization(fakeHash, hex"00");
     }
 
     function test_withdraw_blocked_by_loan() public {
         (bytes32 commitment, bytes32 nullifier, bytes32 secret) = _getCommitment();
-        (bytes32 finalCommitment, bytes32 collateralHash) = _deposit(nullifier, secret);
+        (bytes32 finalCommitment, bytes32 collateralHash) =
+            _deposit(nullifier, secret, depositor, address(privacyVault));
         uint256 yieldIndex = privacyVault.getCurrentBucketedYieldIndex();
 
         bytes32[] memory leaves = new bytes32[](1);
@@ -201,7 +206,7 @@ contract PrivacyVaultBorrowTest is TestBase {
         // Try to withdraw — should revert because loan is active
         (bytes memory withdrawProof, bytes32[] memory withdrawInputs) =
             _getProof(nullifier, secret, borrower, bytes32(yieldIndex), leaves, false);
-        vm.expectRevert(abi.encodeWithSelector(PrivacyVault.PrivacyVault__CollateralLocked.selector, collateralHash));
+        vm.expectRevert(abi.encodeWithSelector(IPrivacyVault.PrivacyVault__CollateralLocked.selector, collateralHash));
         privacyVault.withdraw(
             withdrawProof,
             withdrawInputs[0],
@@ -214,7 +219,8 @@ contract PrivacyVaultBorrowTest is TestBase {
 
     function test_withdraw_after_repay() public {
         (bytes32 commitment, bytes32 nullifier, bytes32 secret) = _getCommitment();
-        (bytes32 finalCommitment, bytes32 collateralHash) = _deposit(nullifier, secret);
+        (bytes32 finalCommitment, bytes32 collateralHash) =
+            _deposit(nullifier, secret, depositor, address(privacyVault));
         uint256 yieldIndex = privacyVault.getCurrentBucketedYieldIndex();
 
         bytes32[] memory leaves = new bytes32[](1);
@@ -254,7 +260,8 @@ contract PrivacyVaultBorrowTest is TestBase {
 
     function test_getDebt_tracks_yield() public {
         (bytes32 commitment, bytes32 nullifier, bytes32 secret) = _getCommitment();
-        (bytes32 finalCommitment, bytes32 collateralHash) = _deposit(nullifier, secret);
+        (bytes32 finalCommitment, bytes32 collateralHash) =
+            _deposit(nullifier, secret, depositor, address(privacyVault));
         uint256 yieldIndex = privacyVault.getCurrentBucketedYieldIndex();
         uint256 borrowAmount = 50e6;
 
@@ -286,12 +293,13 @@ contract PrivacyVaultBorrowTest is TestBase {
     function test_multiple_borrows_different_deposits() public {
         // Deposit 1
         (bytes32 commitment1, bytes32 nullifier1, bytes32 secret1) = _getCommitment();
-        (bytes32 finalCommitment1, bytes32 collateralHash1) = _deposit(nullifier1, secret1);
+        (bytes32 finalCommitment1, bytes32 collateralHash1) =
+            _deposit(nullifier1, secret1, depositor, address(privacyVault));
 
         // Deposit 2
         (bytes32 commitment2, bytes32 nullifier2, bytes32 secret2) = _getCommitment();
-        (bytes32 finalCommitment2, bytes32 collateralHash2) = _deposit(nullifier2, secret2);
-
+        (bytes32 finalCommitment2, bytes32 collateralHash2) =
+            _deposit(nullifier2, secret2, depositor, address(privacyVault));
         uint256 yieldIndex = privacyVault.getCurrentBucketedYieldIndex();
 
         bytes32[] memory leaves = new bytes32[](2);

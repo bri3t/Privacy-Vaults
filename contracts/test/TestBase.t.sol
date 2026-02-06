@@ -13,6 +13,7 @@ import {AavePoolMock} from "./mocks/AavePoolMock.sol";
 import {MorphoVaultMock} from "./mocks/MorphoVaultMock.sol";
 import {IAavePool} from "../src/interfaces/IAavePool.sol";
 import {IMorphoVault} from "../src/interfaces/IMorphoPool.sol";
+import {IPrivacyVault} from "../src/interfaces/IPrivacyVault.sol";
 
 contract TestBase is Test {
     PrivacyVault public privacyVault;
@@ -78,20 +79,20 @@ contract TestBase is Test {
         (commitment, nullifier, secret) = abi.decode(result, (bytes32, bytes32, bytes32));
     }
 
-    function _deposit(bytes32 nullifier, bytes32 secret)
+    function _deposit(bytes32 _nullifier, bytes32 _secret, address _depositor, address _vaultAddress)
         internal
         returns (bytes32 finalCommitment, bytes32 collateralNullifierHash)
     {
-        bytes32 inner = privacyVault.hashLeftRight(nullifier, secret);
+        bytes32 inner = privacyVault.hashLeftRight(_nullifier, _secret);
         uint256 yieldIndex = privacyVault.getCurrentBucketedYieldIndex();
         finalCommitment = privacyVault.hashLeftRight(inner, bytes32(yieldIndex));
 
-        bytes memory sig = _getSignature(depositor);
-        vm.prank(depositor);
-        privacyVault.depositWithAuthorization(inner, sig);
+        bytes memory sig = _getSignature(_depositor);
+        vm.prank(_depositor);
+        IPrivacyVault(_vaultAddress).depositWithAuthorization(inner, sig);
 
         // Compute collateral nullifier hash = Poseidon2(nullifier, 1)
-        collateralNullifierHash = privacyVault.hashLeftRight(nullifier, bytes32(uint256(1)));
+        collateralNullifierHash = privacyVault.hashLeftRight(_nullifier, bytes32(uint256(1)));
     }
 
     function _getProof(

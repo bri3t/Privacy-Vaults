@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {TestBase} from "./TestBase.t.sol";
-import {PrivacyVault} from "../src/PrivacyVault.sol";
+import {IPrivacyVault} from "../src/interfaces/IPrivacyVault.sol";
 
 contract PrivacyVaultTest is TestBase {
     function setUp() public override {
@@ -24,7 +24,7 @@ contract PrivacyVaultTest is TestBase {
         uint256 yieldIndex = privacyVault.getCurrentBucketedYieldIndex();
         bytes32 finalCommitment = privacyVault.hashLeftRight(_commitment, bytes32(yieldIndex));
         vm.expectEmit(true, false, false, true);
-        emit PrivacyVault.DepositWithAuthorization(finalCommitment, 0, block.timestamp, yieldIndex);
+        emit IPrivacyVault.DepositWithAuthorization(finalCommitment, 0, block.timestamp, yieldIndex);
         vm.prank(depositor);
         privacyVault.depositWithAuthorization(_commitment, signature);
         // Each half goes to a different protocol
@@ -43,7 +43,7 @@ contract PrivacyVaultTest is TestBase {
         bytes32 finalCommitment = privacyVault.hashLeftRight(_commitment, bytes32(yieldIndex));
 
         vm.expectEmit(true, false, false, true);
-        emit PrivacyVault.DepositWithAuthorization(finalCommitment, 0, block.timestamp, yieldIndex);
+        emit IPrivacyVault.DepositWithAuthorization(finalCommitment, 0, block.timestamp, yieldIndex);
         vm.prank(depositor);
         privacyVault.depositWithAuthorization(_commitment, signature);
 
@@ -74,7 +74,7 @@ contract PrivacyVaultTest is TestBase {
         uint256 yieldIndex = privacyVault.getCurrentBucketedYieldIndex();
         bytes32 finalCommitment = privacyVault.hashLeftRight(_commitment, bytes32(yieldIndex));
         vm.expectEmit(true, false, false, true);
-        emit PrivacyVault.DepositWithAuthorization(finalCommitment, 0, block.timestamp, yieldIndex);
+        emit IPrivacyVault.DepositWithAuthorization(finalCommitment, 0, block.timestamp, yieldIndex);
         vm.prank(depositor);
         privacyVault.depositWithAuthorization(_commitment, signature);
 
@@ -101,7 +101,7 @@ contract PrivacyVaultTest is TestBase {
         bytes32 finalCommitment = privacyVault.hashLeftRight(_commitment, bytes32(yieldIndex));
 
         vm.expectEmit(true, false, false, true);
-        emit PrivacyVault.DepositWithAuthorization(finalCommitment, 0, block.timestamp, yieldIndex);
+        emit IPrivacyVault.DepositWithAuthorization(finalCommitment, 0, block.timestamp, yieldIndex);
         vm.prank(depositor);
         privacyVault.depositWithAuthorization(_commitment, signature);
 
