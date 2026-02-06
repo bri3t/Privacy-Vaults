@@ -2,9 +2,8 @@ use poseidon::poseidon2;
 
 mod merkle_tree;
 fn main(
-    // Public inputs
+    // Public inputs (4)
     root: pub Field,
-    nullifier_hash: pub Field,
     collateral_nullifier_hash: pub Field,
     recipient: pub Field,
     yield_index: pub Field,
@@ -18,10 +17,6 @@ fn main(
     // compute the commitment as nested hash: Poseidon2(Poseidon2(nullifier, secret), yield_index)
     let inner: Field = poseidon2::Poseidon2::hash([nullifier, secret], 2);
     let commitment: Field = poseidon2::Poseidon2::hash([inner, yield_index], 2);
-
-    // check that the nullifier matches the nullifier hash
-    let computed_nullifier_hash: Field = poseidon2::Poseidon2::hash([nullifier], 1);
-    assert(computed_nullifier_hash == nullifier_hash);
 
     // check that the collateral nullifier hash matches: Poseidon2(nullifier, 1)
     assert(poseidon2::Poseidon2::hash([nullifier, 1], 2) == collateral_nullifier_hash);
