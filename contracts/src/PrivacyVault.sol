@@ -47,7 +47,7 @@ contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard, Ownable {
     struct Loan {
         uint256 principalAmount;
         uint256 borrowYieldIndex; // blended yield index at time of borrow (for interest calculation)
-        uint256 depositYieldIndex; 
+        uint256 depositYieldIndex;
         bool active;
     }
 
@@ -245,7 +245,7 @@ contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard, Ownable {
 
         // Calculate yield-adjusted payout using blended index (Aave + Morpho)
         uint256 currentAaveIndex = aavePool.getReserveNormalizedIncome(address(token)); // e.g. 1.05e27 for 5% yield
-        uint256 currentMorphoIndex = getMorphoNormalizedIncome(); 
+        uint256 currentMorphoIndex = getMorphoNormalizedIncome();
         uint256 currentBlended = (currentAaveIndex + currentMorphoIndex) / 2; // e.g. 1.04e27 if Morpho has slightly lower yield
         uint256 payout = (DENOMINATION * currentBlended) / _yieldIndex; // adjust payout based on yield growth since deposit (e.g. 1.04 * DENOMINATION if blended yield is 4%)
 
@@ -328,13 +328,13 @@ contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard, Ownable {
         if (!loan.active) return 0;
         uint256 currentBlended = _getCurrentBlended(); // e.g. 1.04e27
         // Debt grows with the blended yield index since the borrow time, similar to how the payout
-        return (loan.principalAmount * currentBlended) / loan.borrowYieldIndex; 
+        return (loan.principalAmount * currentBlended) / loan.borrowYieldIndex;
     }
 
-    function repayWithAuthorization(
-        bytes32 _collateralNullifierHash,
-        bytes calldata _receiveAuthorization
-    ) external nonReentrant {
+    function repayWithAuthorization(bytes32 _collateralNullifierHash, bytes calldata _receiveAuthorization)
+        external
+        nonReentrant
+    {
         Loan storage loan = s_loans[_collateralNullifierHash];
         if (!loan.active) revert PrivacyVault__NoActiveLoan({collateralNullifierHash: _collateralNullifierHash});
 
@@ -347,9 +347,8 @@ contract PrivacyVault is IncrementalMerkleTree, ReentrancyGuard, Ownable {
         require(to == address(this), "Wrong recipient");
 
         // Receive USDC via EIP-3009
-        (bool success,) = address(token).call(
-            abi.encodePacked(_RECEIVE_WITH_AUTHORIZATION_SELECTOR, _receiveAuthorization)
-        );
+        (bool success,) =
+            address(token).call(abi.encodePacked(_RECEIVE_WITH_AUTHORIZATION_SELECTOR, _receiveAuthorization));
         require(success, "Transfer failed");
 
         // Re-deposit into Aave/Morpho (50/50)
