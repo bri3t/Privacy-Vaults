@@ -5,6 +5,7 @@ import { FlipWords } from '../components/FlipWords.tsx'
 import { FlowVisualization } from '../components/flow/FlowVisualization.tsx'
 import { DecryptedText } from '../components/DecryptedText.tsx'
 import { BorrowShowcase } from '../components/BorrowShowcase.tsx'
+import { useTheme } from '../contexts/ThemeContext'
 
 interface LandingPageProps {
   onLaunch: () => void
@@ -20,6 +21,7 @@ const fadeUp = {
 }
 
 export function LandingPage({ onLaunch }: LandingPageProps) {
+  const { isDark } = useTheme()
   return (
     <div className="relative min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] overflow-hidden">
       {/* Plasma WebGL background */}
@@ -30,7 +32,12 @@ export function LandingPage({ onLaunch }: LandingPageProps) {
       {/* Navbar */}
       <nav className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl border-b border-[var(--border-subtle)]" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-page) 60%, transparent)' }}>
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="text-lg font-bold text-[var(--text-primary)]">
+          <div className="flex items-center gap-2 text-lg font-bold text-[var(--text-primary)]">
+            <img
+              src={isDark ? '/privacyVaultsLogo_white.jpg' : '/privacyVaultsLogo_black.jpg'}
+              alt="Logo"
+              className="h-6 w-6"
+            />
             <DecryptedText
               text="Privacy Vaults"
               animateOn="view"
@@ -39,7 +46,7 @@ export function LandingPage({ onLaunch }: LandingPageProps) {
               className="text-[var(--text-primary)]"
               encryptedClassName="text-[var(--accent)]"
             />
-          </span>
+          </div>
           <button
             onClick={onLaunch}
             className="px-5 py-2 rounded-lg bg-[var(--accent)] text-[var(--bg-deep)] text-sm font-medium hover:bg-[var(--accent-hover)] transition-all"

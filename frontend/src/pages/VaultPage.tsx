@@ -15,6 +15,7 @@ import { baseSepolia, base } from "viem/chains";
 import { NETWORK_CONFIGS, type VaultConfig } from '../contracts/addresses.ts'
 import { useNetworkConfig } from '../hooks/useNetworkConfig.ts'
 import { useNetworkMode, type NetworkMode } from '../contexts/NetworkModeContext.tsx'
+import { useTheme } from '../contexts/ThemeContext'
 import { useFaucetClaim } from '../hooks/useFaucetClaim.ts'
 
 // Get initial vault based on stored network mode
@@ -42,6 +43,7 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
     const { isAuthenticated } = useUser();
     const networkConfig = useNetworkConfig()
     const { isMainnet } = useNetworkMode()
+    const { isDark } = useTheme()
 
     // Silent auto-claim from Circle faucet on testnet
     useFaucetClaim(address, !isMainnet)
@@ -83,8 +85,13 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
                 <div className="flex items-center gap-3">
                     <button
                         onClick={onBack}
-                        className="text-lg font-bold text-[var(--text-primary)] hover:opacity-80 transition-opacity"
+                        className="flex items-center gap-2 text-lg font-bold text-[var(--text-primary)] hover:opacity-80 transition-opacity"
                     >
+                        <img
+                            src={isDark ? '/privacyVaultsLogo_white.jpg' : '/privacyVaultsLogo_black.jpg'}
+                            alt="Logo"
+                            className="h-6 w-6"
+                        />
                         <DecryptedText
                             text="Privacy Vaults"
                             animateOn="view"
