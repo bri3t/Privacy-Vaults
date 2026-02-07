@@ -1,79 +1,47 @@
-import { useState, useEffect, useRef } from 'react'
-import { createPublicClient, http } from 'viem'
+import { useMemo } from 'react'
+import { useEnsAddress, useEnsAvatar } from 'wagmi'
 import { normalize } from 'viem/ens'
-import { mainnet } from 'viem/chains'
-
-const mainnetClient = createPublicClient({
-  chain: mainnet,
-  transport: http(),
-})
 
 export function useEnsResolution(input: string) {
-  const [resolvedAddress, setResolvedAddress] = useState<string | null>(null)
-  const [ensName, setEnsName] = useState<string | null>(null)
-  const [isResolving, setIsResolving] = useState(false)
-  const [ensNotFound, setEnsNotFound] = useState(false)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
+  const trimmed = input.trim()
 
-  useEffect(() => {
-    const trimmed = input.trim()
+  const isRawAddress = /^0x[0-9a-fA-F]{40}$/.test(trimmed)
+  const isEnsName = !isRawAddress && trimmed.includes('.')
 
-    // Reset if empty
-    if (!trimmed) {
-      setResolvedAddress(null)
-      setEnsName(null)
-      setEnsNotFound(false)
-      return
+  const normalizedName = useMemo(() => {
+    if (!isEnsName) return undefined
+    try {
+      return normalize(trimmed)
+    } catch {
+      return undefined
     }
+  }, [trimmed, isEnsName])
 
-    // If it's already a valid address, no resolution needed
-    if (/^0x[0-9a-fA-F]{40}$/.test(trimmed)) {
-      setResolvedAddress(trimmed)
-      setEnsName(null)
-      setEnsNotFound(false)
-      return
-    }
+  const { data: ensAddress, isLoading: isLoadingAddress, isError: isAddressError } = useEnsAddress({
+    name: normalizedName,
+    chainId: 1,
+    query: { enabled: !!normalizedName },
+  })
 
-    // If it looks like an ENS name (contains a dot)
-    if (!trimmed.includes('.')) {
-      setResolvedAddress(null)
-      setEnsName(null)
-      setEnsNotFound(false)
-      return
-    }
+  const { data: avatar } = useEnsAvatar({
+    name: normalizedName,
+    chainId: 1,
+    query: { enabled: !!normalizedName && !!ensAddress },
+  })
 
-    // Debounce ENS resolution
-    if (debounceRef.current) clearTimeout(debounceRef.current)
+  if (isRawAddress) {
+    return { resolvedAddress: trimmed, ensName: null, avatar: null, isResolving: false, ensNotFound: false }
+  }
 
-    setEnsNotFound(false)
-    debounceRef.current = setTimeout(async () => {
-      setIsResolving(true)
-      try {
-        const address = await mainnetClient.getEnsAddress({
-          name: normalize(trimmed),
-        })
-        if (address) {
-          setResolvedAddress(address)
-          setEnsName(trimmed)
-          setEnsNotFound(false)
-        } else {
-          setResolvedAddress(null)
-          setEnsName(null)
-          setEnsNotFound(true)
-        }
-      } catch {
-        setResolvedAddress(null)
-        setEnsName(null)
-        setEnsNotFound(true)
-      } finally {
-        setIsResolving(false)
-      }
-    }, 500)
+  if (!isEnsName || !normalizedName) {
+    return { resolvedAddress: null, ensName: null, avatar: null, isResolving: false, ensNotFound: false }
+  }
 
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-    }
-  }, [input])
-
-  return { resolvedAddress, ensName, isResolving, ensNotFound }
+  return {
+    resolvedAddress: ensAddress ?? null,
+    ensName: ensAddress ? trimmed : null,
+    avatar: avatar ?? null,
+    isResolving: isLoadingAddress,
+    ensNotFound: !isLoadingAddress && (isAddressError || !ensAddress),
+  }
 }

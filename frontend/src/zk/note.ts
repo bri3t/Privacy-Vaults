@@ -33,9 +33,10 @@ export function encodeNote(
 
 /** Parse prefix metadata from a note string. Returns null for legacy (0x) format. */
 export function parseNotePrefix(note: string): NotePrefix | null {
-  if (note.startsWith('0x')) return null
-  if (!note.startsWith('privacyvaults-')) return null
-  const parts = note.split('-')
+  const cleaned = note.replace(/[^\x20-\x7E]/g, '').trim()
+  if (cleaned.startsWith('0x')) return null
+  if (!cleaned.startsWith('privacyvaults-')) return null
+  const parts = cleaned.split('-')
   // privacyvaults-currency-amount-network_part-hex...
   // The network can contain underscores (e.g. base_sepolia) but not dashes,
   // so parts[1]=currency, parts[2]=amount, parts[3]=network, parts[4+]=hex
@@ -47,15 +48,21 @@ export function parseNotePrefix(note: string): NotePrefix | null {
   }
 }
 
+/** Strip all non-printable / invisible characters (BOM, zero-width, control chars, etc.) */
+function sanitizeNote(raw: string): string {
+  return raw.replace(/[^\x20-\x7E]/g, '').trim()
+}
+
 /** Extract raw hex data (256 chars) from a note string (supports both formats). */
 function extractHexData(note: string): string {
-  if (note.startsWith('0x')) {
-    return note.slice(2)
+  const cleaned = sanitizeNote(note)
+  if (cleaned.startsWith('0x')) {
+    return cleaned.slice(2)
   }
   // New format: everything after the 4th dash is hex data
-  const idx = nthIndexOf(note, '-', 4)
+  const idx = nthIndexOf(cleaned, '-', 4)
   if (idx === -1) throw new Error('Invalid note format')
-  return note.slice(idx + 1)
+  return cleaned.slice(idx + 1)
 }
 
 function nthIndexOf(str: string, char: string, n: number): number {

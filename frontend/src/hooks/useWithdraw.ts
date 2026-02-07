@@ -121,6 +121,7 @@ export function useWithdraw(vaultAddress: string) {
 
         setState({ step: 'done', txHash, error: null })
       } catch (err) {
+        console.error('[useWithdraw] raw error:', err)
         setState((s) => ({ ...s, step: 'error', error: sanitizeError(err) }))
       }
     },

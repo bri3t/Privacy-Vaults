@@ -46,7 +46,7 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
   const successSnapshot = useRef<{ recipient: string; ensName: string | null }>({ recipient: '', ensName: null })
 
   // ENS resolution
-  const { resolvedAddress, ensName, isResolving, ensNotFound } = useEnsResolution(recipient)
+  const { resolvedAddress, ensName, avatar, isResolving, ensNotFound } = useEnsResolution(recipient)
   const { preferences, isLoading: isLoadingPrefs } = useEnsWithdrawPreferences(ensName)
 
   // Auto-populate cross-chain settings from ENS text records
@@ -92,7 +92,7 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
     if (!file) return
     const reader = new FileReader()
     reader.onload = () => {
-      const text = (reader.result as string).trim()
+      const text = (reader.result as string).replace(/[^\x20-\x7E]/g, '').trim()
       setNoteInput(text)
     }
     reader.readAsText(file)
@@ -240,10 +240,20 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
             </p>
           )}
           {ensName && resolvedAddress && (
-            <div className="space-y-1">
-              <p className="text-xs text-[var(--text-secondary)]">
-                {ensName} &rarr; <span className="font-mono text-[var(--text-secondary)]">{resolvedAddress.slice(0, 6)}...{resolvedAddress.slice(-4)}</span>
-              </p>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-primary)]">
+                {avatar ? (
+                  <img src={avatar} alt={ensName} className="w-8 h-8 rounded-full" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500/30 to-purple-500/30" />
+                )}
+                <div className="flex flex-col leading-tight">
+                  <span className="text-sm font-semibold text-[var(--text-primary)]">{ensName}</span>
+                  <span className="text-xs font-mono text-[var(--text-muted)]">
+                    {resolvedAddress.slice(0, 6)}...{resolvedAddress.slice(-4)}
+                  </span>
+                </div>
+              </div>
               {isLoadingPrefs && (
                 <p className="text-xs text-[var(--text-muted)]">Loading withdrawal preferences...</p>
               )}

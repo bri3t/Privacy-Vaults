@@ -36,10 +36,33 @@ const ERROR_MAP: [RegExp, string][] = [
   [/ETIMEDOUT|ECONNREFUSED/i, 'Network error — please check your connection and try again'],
 ]
 
+// Pimlico bundler returns hex-encoded error selectors in simulation reverts.
+// Map 4-byte selectors to friendly messages so we catch them even without decoded names.
+const SELECTOR_MAP: Record<string, string> = {
+  '12919641': 'This note has already been used',
+  '3538ce08': 'Merkle root is outdated — please try again',
+  '9a3a9915': 'Cannot withdraw — there is an active loan on this note',
+  'ed2e28de': 'This deposit has already been withdrawn',
+  '68566d61': 'Proof verification failed — please try again',
+  '7bdeea40': 'Proof verification failed — please try again',
+  'e377443b': 'There is already an active loan on this note',
+  'd511dc7b': 'No active loan found for this note',
+  '4d621a78': 'Borrow amount exceeds the maximum allowed',
+  'b804acbc': 'This commitment was already deposited',
+  '493d12b8': 'Invalid yield index',
+  'd11ee4df': 'Deposit amount does not match vault denomination',
+}
+
 export function sanitizeError(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err)
   for (const [pattern, friendly] of ERROR_MAP) {
     if (pattern.test(raw)) return friendly
+  }
+  // Try matching hex error selectors from bundler simulation reverts
+  const selectorMatch = raw.match(/reason:\s*0x([0-9a-f]{8})/i)
+  if (selectorMatch) {
+    const friendly = SELECTOR_MAP[selectorMatch[1].toLowerCase()]
+    if (friendly) return friendly
   }
   return 'Something went wrong — please try again'
 }

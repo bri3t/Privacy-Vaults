@@ -8,6 +8,7 @@ import { useNoteMetadata } from '../hooks/useNoteMetadata.ts'
 import { useYieldApy } from '../hooks/useYieldApy.ts'
 import { decodeNote } from '../zk/note.ts'
 import { ProgressModal } from './ProgressModal.tsx'
+import { useEnsResolution } from '../hooks/useEnsResolution.ts'
 import type { VaultConfig, NetworkConfig } from '../contracts/addresses.ts'
 
 const BORROW_STEPS = [
@@ -42,6 +43,11 @@ export function BorrowTab({ selectedVault, networkConfig }: { selectedVault: Vau
   const borrowAmount = (maxBorrow * borrowPercent) / 100
   const borrowAmountRaw = BigInt(Math.floor((Number(selectedVault.denomination) * LTV_BPS * borrowPercent) / (BPS * 100)))
 
+  // ENS resolution
+  const { resolvedAddress, ensName, avatar, isResolving, ensNotFound } = useEnsResolution(recipient)
+  const effectiveRecipient = resolvedAddress || recipient
+  const isRecipientValid = !!resolvedAddress
+
   const isBorrowActive = borrowStep !== 'idle' && borrowStep !== 'done' && borrowStep !== 'error'
   const isRepayActive = repayStep !== 'idle' && repayStep !== 'done' && repayStep !== 'error'
   const hasActiveLoan = loanInfo.loan?.active === true
@@ -62,16 +68,16 @@ export function BorrowTab({ selectedVault, networkConfig }: { selectedVault: Vau
     if (!file) return
     const reader = new FileReader()
     reader.onload = () => {
-      const text = (reader.result as string).trim()
+      const text = (reader.result as string).replace(/[^\x20-\x7E]/g, '').trim()
       setNoteInput(text)
     }
     reader.readAsText(file)
   }
 
   const handleBorrow = () => {
-    if (!noteInput.trim() || !recipient.trim()) return
+    if (!noteInput.trim() || !isRecipientValid) return
     setSubmittedBorrowAmount(borrowAmount)
-    borrow(noteInput.trim(), recipient.trim(), borrowAmountRaw.toString())
+    borrow(noteInput.trim(), effectiveRecipient.trim(), borrowAmountRaw.toString())
   }
 
   const handleRepay = () => {
@@ -180,7 +186,7 @@ export function BorrowTab({ selectedVault, networkConfig }: { selectedVault: Vau
                 <input
                   value={recipient}
                   onChange={(e) => setRecipient(e.target.value)}
-                  placeholder="0x..."
+                  placeholder="0x... or name.eth"
                   disabled={isBorrowActive}
                   className="flex-1 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-primary)] rounded-lg text-xs font-mono text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-zinc-400/60 transition-colors"
                 />
@@ -194,6 +200,32 @@ export function BorrowTab({ selectedVault, networkConfig }: { selectedVault: Vau
                   </button>
                 )}
               </div>
+              {isResolving && (
+                <p className="text-xs text-[var(--text-muted)] flex items-center gap-1.5">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full border-2 border-zinc-400 border-t-transparent animate-spin" />
+                  Resolving ENS name...
+                </p>
+              )}
+              {ensNotFound && (
+                <p className="text-xs text-red-400">
+                  ENS name not found — no address is linked to this name.
+                </p>
+              )}
+              {ensName && resolvedAddress && (
+                <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-primary)]">
+                  {avatar ? (
+                    <img src={avatar} alt={ensName} className="w-8 h-8 rounded-full" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500/30 to-purple-500/30" />
+                  )}
+                  <div className="flex flex-col leading-tight">
+                    <span className="text-sm font-semibold text-[var(--text-primary)]">{ensName}</span>
+                    <span className="text-xs font-mono text-[var(--text-muted)]">
+                      {resolvedAddress.slice(0, 6)}...{resolvedAddress.slice(-4)}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -251,7 +283,7 @@ export function BorrowTab({ selectedVault, networkConfig }: { selectedVault: Vau
             ) : (
               <button
                 onClick={handleBorrow}
-                disabled={isBorrowActive || !noteInput.trim() || !recipient.trim()}
+                disabled={isBorrowActive || !noteInput.trim() || !isRecipientValid}
                 className="w-full py-3.5 px-4 rounded-xl bg-[var(--accent)] text-[var(--bg-deep)] font-semibold hover:bg-[var(--accent-hover)] hover:shadow-lg hover:shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 Borrow {borrowAmount.toFixed(2)} USDC

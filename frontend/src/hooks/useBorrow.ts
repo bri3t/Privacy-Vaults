@@ -117,6 +117,7 @@ export function useBorrow(vaultAddress: string) {
 
         setState({ step: 'done', txHash, error: null })
       } catch (err) {
+        console.error('[useBorrow] raw error:', err)
         setState((s) => ({ ...s, step: 'error', error: sanitizeError(err) }))
       }
     },
