@@ -141,8 +141,22 @@ Privacy-Vaults/
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) >= 18
+- [Foundry](https://book.getfoundry.sh/getting-started/installation) — only needed if you want to compile or test the smart contracts
 
-> Circuit artifacts and contract deployments are already included in the repository. Nargo and Foundry are only needed if you want to modify the circuits or contracts.
+> Circuit artifacts and contract deployments are already included in the repository. Nargo is only needed if you want to modify the ZK circuits.
+
+### Clone
+
+```bash
+git clone --recurse-submodules https://github.com/bri3t/Privacy-Vaults.git
+cd Privacy-Vaults
+```
+
+If you already cloned without `--recurse-submodules`, run:
+
+```bash
+git submodule update --init --recursive
+```
 
 ### Environment Variables
 
@@ -164,6 +178,27 @@ cd frontend
 cp .env.example .env   # fill in values
 npm install
 npm run dev
+```
+
+### Contracts (optional)
+
+Smart contracts are already deployed. If you want to compile or test them locally:
+
+```bash
+cd contracts
+forge build
+forge test
+```
+
+The Solidity dependencies (`forge-std`, `openzeppelin-contracts`, `poseidon2-evm`) are included as git submodules in `contracts/lib/`.
+
+### JS Scripts (optional)
+
+Helper scripts for generating proofs and commitments locally (used for testing):
+
+```bash
+npm install        # from the repo root
+npx tsx contracts/js-scripts/generateCommitment.ts
 ```
 
 ## Tech Stack
