@@ -6,6 +6,9 @@
 
 Deposit privately, earn yield, borrow against your ZK proof, and withdraw to any chain — all without a single wallet popup. The longer your funds stay in the vault, the more you earn and the more private you become.
 
+Currently live on:
+- [Privacy Vaults](https://privacyvaults.arnaubriet.com)
+
 ## What is Privacy Vaults
 
 Privacy Vaults is a DeFi protocol that lets users deposit USDC into a shared vault, earn yield from Aave V3 and Morpho, and withdraw privately using zero-knowledge proofs. Deposits break the on-chain link between depositor and withdrawer — nobody can tell which deposit a withdrawal corresponds to. The longer funds stay in the vault, the more yield they accumulate and the larger the anonymity set grows, so privacy and profit increase together.
