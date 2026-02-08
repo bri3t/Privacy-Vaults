@@ -1,4 +1,6 @@
 # Privacy Vaults
+ ***What if you could borrow money... without anyone knowing you exist?***
+#
 
 Deposit privately, earn yield, borrow against your ZK proof, and withdraw to any chain — all without a single wallet popup. The longer your funds stay in the vault, the more you earn and the more private you become.
 

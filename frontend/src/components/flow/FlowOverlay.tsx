@@ -29,7 +29,7 @@ const stages = [
 
 export function FlowOverlay({ activeStep }: FlowOverlayProps) {
   return (
-    <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-start pt-8 px-8">
+    <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-start pt-4 sm:pt-8 px-4 sm:px-8">
       {/* Stage title + description */}
       <AnimatePresence mode="wait">
         <motion.div
@@ -43,7 +43,7 @@ export function FlowOverlay({ activeStep }: FlowOverlayProps) {
           <p className="text-xs font-medium tracking-widest uppercase text-[var(--text-tertiary)] mb-3">
             Step {activeStep + 1} of 5
           </p>
-          <h2 className="text-3xl sm:text-4xl font-bold text-[var(--text-primary)] mb-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[var(--text-primary)] mb-4">
             {stages[activeStep].title}
           </h2>
           <p className="text-[var(--text-tertiary)] text-base sm:text-lg leading-relaxed">

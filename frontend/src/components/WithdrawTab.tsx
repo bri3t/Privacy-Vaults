@@ -80,7 +80,7 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
     fromAddress: address || '',
     toChainId: selectedChain.chainId,
     toTokenAddress: selectedToken.address,
-    enabled: effectiveCrossChain && isConnected && !!address,
+    enabled: crossChainEnabled && isConnected && !!address,
   })
 
   // Auto-trigger gasless bridge after cross-chain withdrawal
@@ -273,20 +273,19 @@ export function WithdrawTab({ selectedVault, networkConfig }: { selectedVault: V
           )}
         </div>
 
-        {/* Cross-chain selector (hidden in testnet mode) */}
-        {!isTestnet && (
-          <CrossChainSelector
-            enabled={crossChainEnabled}
-            onToggle={setCrossChainEnabled}
-            selectedChain={selectedChain}
-            onChainChange={setSelectedChain}
-            selectedToken={selectedToken}
-            onTokenChange={setSelectedToken}
-            quote={quote}
-            isLoadingQuote={isLoadingQuote}
-            quoteError={quoteError}
-          />
-        )}
+        {/* Cross-chain selector (UI-only on testnet — bridge never fires) */}
+        <CrossChainSelector
+          enabled={crossChainEnabled}
+          onToggle={setCrossChainEnabled}
+          selectedChain={selectedChain}
+          onChainChange={setSelectedChain}
+          selectedToken={selectedToken}
+          onTokenChange={setSelectedToken}
+          quote={quote}
+          isLoadingQuote={isLoadingQuote}
+          quoteError={quoteError}
+          isTestnet={isTestnet}
+        />
       </div>
 
       {/* Action button — pushed to bottom */}

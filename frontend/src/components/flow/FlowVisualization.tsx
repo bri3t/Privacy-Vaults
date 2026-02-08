@@ -52,7 +52,7 @@ export function FlowVisualization() {
   const useCustomAnimation = isCommitmentStage || isMerkleTreeStage || isZKProofStage
 
   return (
-    <div className="relative w-full h-[80vh] overflow-hidden">
+    <div className="relative w-full h-[60vh] sm:h-[80vh] overflow-hidden">
       {/* Three.js canvas - hide during custom animation stages */}
       <Canvas
         camera={{ position: [0, 0, 8], fov: 50 }}
@@ -78,7 +78,7 @@ export function FlowVisualization() {
       {/* Bottom controls */}
       <div className="absolute bottom-6 inset-x-0 flex flex-col items-center gap-4">
         {/* Step circles */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {STAGE_LABELS.map((label, i) => {
             const isActive = i === activeStep
             const isDone = i < activeStep
@@ -90,7 +90,7 @@ export function FlowVisualization() {
               >
                 <div
                   className={`
-                    w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold
+                    w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold
                     transition-all duration-300 border-2
                     ${isActive
                       ? 'bg-white border-transparent text-zinc-950 shadow-lg shadow-white/20 scale-110'
@@ -103,7 +103,7 @@ export function FlowVisualization() {
                   {i + 1}
                 </div>
                 <span
-                  className={`text-[10px] font-medium transition-colors duration-300 ${
+                  className={`hidden sm:block text-[10px] font-medium transition-colors duration-300 ${
                     isActive ? 'text-[var(--text-primary)]' : isDone ? 'text-zinc-400' : 'text-[var(--text-muted)]'
                   }`}
                 >

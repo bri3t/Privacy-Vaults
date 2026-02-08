@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { DepositStage } from './stages/DepositStage.tsx'
 import { CommitmentStage } from './stages/CommitmentStage.tsx'
@@ -37,13 +37,27 @@ function lerpVec3(a: number[], b: number[], t: number): [number, number, number]
 
 function CameraRig({ progress }: { progress: number }) {
   const lookAtTarget = useRef(new THREE.Vector3())
+  const { size } = useThree()
 
   useFrame(({ camera }) => {
+    const aspect = size.width / size.height
+    const isMobile = aspect < 1
+
+    // On narrow (portrait) viewports, widen FOV and pull camera back
+    // so the full deposit/withdraw scenes remain visible
+    const cam = camera as THREE.PerspectiveCamera
+    const targetFov = isMobile ? 75 : 50
+    cam.fov = THREE.MathUtils.lerp(cam.fov, targetFov, 0.05)
+    cam.updateProjectionMatrix()
+
+    const zMultiplier = isMobile ? 1.2 : 1
+
     const stageIdx = Math.min(Math.floor(progress / 0.2), 4)
     const nextIdx = Math.min(stageIdx + 1, 4)
     const t = (progress - stageIdx * 0.2) / 0.2
 
     const pos = lerpVec3(cameraPositions[stageIdx], cameraPositions[nextIdx], t)
+    pos[2] *= zMultiplier
     const target = lerpVec3(cameraTargets[stageIdx], cameraTargets[nextIdx], t)
 
     camera.position.lerp(new THREE.Vector3(...pos), 0.05)

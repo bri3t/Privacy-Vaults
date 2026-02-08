@@ -5,6 +5,9 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   appType: 'spa',
+  server: {
+    host: '0.0.0.0',
+  },
   define: {
     'global': 'globalThis',
   },

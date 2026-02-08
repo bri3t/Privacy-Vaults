@@ -81,7 +81,7 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
             <AnimatedBackground />
 
             {/* Top bar — constrained to content width */}
-            <div className="relative z-10 max-w-5xl mx-auto px-4 pt-5 pb-4 flex items-center justify-between">
+            <div className="relative z-10 max-w-5xl mx-auto px-3 sm:px-4 pt-5 pb-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <button
                         onClick={onBack}
@@ -92,14 +92,16 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
                             alt="Logo"
                             className="h-6 w-6"
                         />
-                        <DecryptedText
-                            text="Privacy Vaults"
-                            animateOn="view"
-                            sequential
-                            speed={40}
-                            className="text-[var(--text-primary)]"
-                            encryptedClassName="text-[var(--accent)]"
-                        />
+                        <span className="hidden sm:inline">
+                            <DecryptedText
+                                text="Privacy Vaults"
+                                animateOn="view"
+                                sequential
+                                speed={40}
+                                className="text-[var(--text-primary)]"
+                                encryptedClassName="text-[var(--accent)]"
+                            />
+                        </span>
                     </button>
                     <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium ${isMainnet
                             ? 'bg-green-500/10 text-green-400 border border-green-500/20'
@@ -125,7 +127,7 @@ export function VaultPage({ onBack }: { onBack: () => void }) {
             </div>
 
             {/* Main content — two-card layout */}
-            <div className="relative z-10 max-w-5xl mx-auto px-4 pb-8 flex flex-col lg:flex-row gap-6">
+            <div className="relative z-10 max-w-5xl mx-auto px-3 sm:px-4 pb-8 flex flex-col lg:flex-row gap-6">
                 <div className="w-full lg:w-1/2 min-h-[344px]">
                     <div className="glass-card rounded-2xl shadow-xl shadow-black/10 h-full flex flex-col">
                         {/* Tabs */}

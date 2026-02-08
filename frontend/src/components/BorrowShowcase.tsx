@@ -40,7 +40,7 @@ function FlowDots({ fadeOut = false }: { fadeOut?: boolean }) {
 
 export function BorrowShowcase() {
   return (
-    <section className="relative z-10 py-24 px-6">
+    <section className="relative z-10 py-24 px-4 sm:px-6">
       <div className="max-w-5xl mx-auto">
         {/* Heading */}
         <motion.h2

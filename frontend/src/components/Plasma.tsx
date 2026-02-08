@@ -106,11 +106,12 @@ export function Plasma({
     const customColorRgb = color ? hexToRgb(color) : [1, 1, 1]
     const directionMultiplier = direction === 'reverse' ? -1.0 : 1.0
 
+    const isMobile = window.innerWidth < 768
     const renderer = new Renderer({
       webgl: 2,
       alpha: true,
       antialias: false,
-      dpr: Math.min(window.devicePixelRatio || 1, 2),
+      dpr: isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 2),
     })
     const gl = renderer.gl
     const canvas = gl.canvas as HTMLCanvasElement

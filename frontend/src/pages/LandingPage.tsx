@@ -31,7 +31,7 @@ export function LandingPage({ onLaunch }: LandingPageProps) {
 
       {/* Navbar */}
       <nav className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl border-b border-[var(--border-subtle)]" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-page) 60%, transparent)' }}>
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 text-lg font-bold text-[var(--text-primary)]">
             <img
               src={isDark ? '/privacyVaultsLogo_white.jpg' : '/privacyVaultsLogo_black.jpg'}
@@ -81,7 +81,7 @@ export function LandingPage({ onLaunch }: LandingPageProps) {
             Break the on-chain link between sender and receiver. Deposit and withdraw
             USDC with zero-knowledge proofs on Base.
           </p>
-          <div className="mt-10 flex items-center justify-center gap-4">
+          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
               onClick={onLaunch}
               className="px-8 py-3.5 rounded-xl bg-[var(--accent)] text-[var(--bg-deep)] font-semibold text-lg hover:bg-[var(--accent-hover)] transition-all"
@@ -143,7 +143,7 @@ export function LandingPage({ onLaunch }: LandingPageProps) {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.15, duration: 0.5, ease: 'easeOut' }}
-                className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight"
+                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight"
                 style={{ color: line.color }}
               >
                 {line.text}
@@ -339,7 +339,7 @@ export function LandingPage({ onLaunch }: LandingPageProps) {
                 </div>
 
                 {/* Other chains */}
-                <div className="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-[var(--border-subtle)]">
+                <div className="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-[var(--border-subtle)] flex-wrap">
                   <span className="text-xs text-[var(--text-muted)]">Also:</span>
                   {['Arbitrum', 'Polygon', 'Optimism', 'Avalanche'].map((chain) => (
                     <span

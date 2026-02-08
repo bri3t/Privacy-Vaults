@@ -12,6 +12,7 @@ interface CrossChainSelectorProps {
   quote: LiFiQuote | null
   isLoadingQuote: boolean
   quoteError: string | null
+  isTestnet?: boolean
 }
 
 export function CrossChainSelector({
@@ -24,6 +25,7 @@ export function CrossChainSelector({
   quote,
   isLoadingQuote,
   quoteError,
+  isTestnet = false,
 }: CrossChainSelectorProps) {
   const destinationChains = SUPPORTED_CHAINS.filter((c) => c.chainId !== BASE_CHAIN_ID)
   const tokens = COMMON_TOKENS[selectedChain.chainId] || []
@@ -66,15 +68,29 @@ export function CrossChainSelector({
     <div className="space-y-3">
       {/* Toggle */}
       <div className="flex items-center justify-between">
-        <span className="text-sm text-[var(--text-tertiary)]">Cross-chain withdrawal</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-[var(--text-tertiary)]">Cross-chain withdrawal</span>
+          {isTestnet && (
+            <span className="relative group flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              Disabled on testnet
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="cursor-help">
+                <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+                <text x="8" y="12" textAnchor="middle" fill="currentColor" fontSize="10" fontWeight="600">i</text>
+              </svg>
+              <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 px-3 py-2 rounded-lg bg-[var(--bg-surface)] border border-amber-500/20 text-xs text-amber-300 leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-20 shadow-lg">
+                Cross-chain bridging via LI.FI is only available on mainnet. The UI is shown for preview only.
+              </span>
+            </span>
+          )}
+        </div>
         <button
           onClick={() => onToggle(!enabled)}
           className={`relative w-11 h-6 rounded-full transition-colors ${
-            enabled ? 'bg-zinc-300' : 'bg-[var(--bg-hover)]'
+            enabled ? 'bg-[var(--accent)]' : 'bg-[var(--border-primary)]'
           }`}
         >
           <span
-            className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+            className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
               enabled ? 'translate-x-5' : 'translate-x-0'
             }`}
           />

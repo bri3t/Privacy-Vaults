@@ -58,7 +58,7 @@ export function StatsPanel({ selectedVault, networkConfig }: StatsPanelProps) {
             <span className="text-sm text-[var(--text-tertiary)]">Loading...</span>
           </div>
         ) : error ? null : (
-          <div className="grid grid-cols-2 grid-rows-5 grid-flow-col gap-x-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-rows-5 sm:grid-flow-col gap-x-4">
             {Array.from({ length: 10 }, (_, i) => {
               const d = latest10[i]
               const row = i % 5
