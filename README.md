@@ -176,3 +176,9 @@ npm run dev
 | Cross-Chain | LI.FI |
 | Identity | ENS |
 | 3D Graphics | Three.js, React Three Fiber |
+
+## Disclaimer
+
+This project is a proof of concept built for educational and demonstration purposes only. It has **not been audited** and should **not be used with real funds**. The smart contracts, ZK circuits, and infrastructure may contain bugs, vulnerabilities, or other issues that could result in loss of funds. Use at your own risk.
+
+This software is provided "as is", without warranty of any kind. The authors are not responsible for any losses or damages arising from its use.
